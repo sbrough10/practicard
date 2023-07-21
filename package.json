@@ -1,0 +1,23 @@
+{
+  "name": "practicard",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": "19.7.0"
+  },
+  "scripts": {
+    "lernaInstall": "npx lerna bootstrap --scope=\"practicard-server\" --include-dependencies",
+    "lernaBuild": "npx lerna run build --scope=\"practicard-server\" --include-dependencies",
+    "start": "(cd packages/server && npm start)"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lerna": "^5.1.8",
+    "lerna-cli": "^5.1.1"
+  }
+}
