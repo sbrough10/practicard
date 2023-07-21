@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "engines": {
-    "node": "19.7.0"
+    "node": "18.17.0"
   },
   "scripts": {
     "build": "npx tsc"
