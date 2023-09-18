@@ -5,15 +5,16 @@ export const useFlashcardTagMap = () => {
   const dispatch = useDispatch();
 
   const tagMap = useSelector(select.getFlashcardTagMap);
+  const isLoading = useSelector(select.isFlashcardTagMapLoading);
 
   useEffect(() => {
     // TODO - Every instance of this hook is dispatching the action because the state is not updated
     // until all of these `useEffect` callbacks are executed. There has to be a way to suspend the
     // callbacks until the state is updated.
-    if (!tagMap) {
-      dispatch(action.loadFlashcardTagMap());
+    if (!isLoading && !tagMap) {
+      dispatch(action.queueLoadFlashcardTagMap());
     }
-  }, [dispatch, tagMap]);
+  }, [dispatch, tagMap, isLoading]);
 
   return tagMap;
 };

@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from "react";
 import { BasePopupView } from "../BasePopupView";
-import { useFlaschardList } from "app/state";
-import { FlashcardFilterData } from "app/utilities/types";
+import { useFlashcardBatch, useFlashcardTagMap } from "app/state";
+import { FlashcardFilterData } from "practicard-shared";
 import { Button } from "@mui/material";
 import { classes } from "./styles";
 
@@ -16,12 +16,20 @@ export const ExportedCards: React.FC<ExportedCardsProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const flashcardList = useFlaschardList({ filter });
+  const { list: flashcardList } = useFlashcardBatch({ filter }) ?? {};
+  const flashcardTagMap = useFlashcardTagMap();
 
   const text =
-    flashcardList
-      ?.map((card) => card.frontText + "\t" + card.backText)
-      .join("\n") ?? "";
+    (flashcardTagMap &&
+      flashcardList
+        ?.map(
+          ({ frontText, backText, hits, misses, tagIdList }) =>
+            `${frontText}\t${backText}\t${hits}\t${misses}\t${tagIdList
+              .map((tagId) => flashcardTagMap[tagId].label)
+              .join("\t")}`
+        )
+        .join("\n")) ??
+    "";
 
   const copyToClipboard = useCallback(() => {
     const textarea = textareaRef.current;
@@ -45,7 +53,6 @@ export const ExportedCards: React.FC<ExportedCardsProps> = ({
       <textarea disabled={true} className={classes.text} ref={textareaRef}>
         {text}
       </textarea>
-      {/* <pre className={classes.text}>{text}</pre> */}
     </BasePopupView>
   );
 };

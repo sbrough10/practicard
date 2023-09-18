@@ -1,6 +1,6 @@
-import { ActionType } from "redux-util";
+import { ActionType, AsyncActionType } from "redux-util";
 import { FullState } from "./index.types";
-import { FlashcardData, FlashcardFilterData } from "app/utilities/types";
+import { FlashcardData, FlashcardFilterData } from "practicard-shared";
 
 export interface FlashcardDeckState {
   activeCardId: FlashcardData["id"];
@@ -16,13 +16,19 @@ export interface CreateFlashcardDeckActionData {
 }
 
 export const types = {
-  createFlashcardDeck: new ActionType<FullState, CreateFlashcardDeckActionData>(
-    "flashcardDeck.create"
-  ),
-  loadMaxHitPercentage: new ActionType<FullState, number>(
+  createFlashcardDeck: new AsyncActionType<
+    FullState,
+    null,
+    CreateFlashcardDeckActionData,
+    unknown
+  >("flashcardDeck.create"),
+  loadMaxHitPercentage: new AsyncActionType<FullState, null, number, unknown>(
     "flashcardDeck.maxHitPercentage.load"
   ),
-  pickFlashcard: new ActionType<FullState, FlashcardData["id"]>(
-    "flashcardDeck.flashcard.pick"
-  ),
+  pickFlashcard: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardData["id"],
+    unknown
+  >("flashcardDeck.flashcard.pick"),
 };

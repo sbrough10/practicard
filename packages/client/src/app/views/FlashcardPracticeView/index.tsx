@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { FlashcardData } from "../../utilities/types";
+import { FlashcardData } from "practicard-shared";
 import {
   useActiveDeckCardCount,
   useActiveFlashcard,
@@ -28,7 +28,7 @@ export interface FlashcardPracticeViewProps {
   onExit: () => void;
 }
 
-export const FlaschardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
+export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
   onExit,
 }) => {
   const [moreOptionsMenuAnchor, setMoreOptionsMenuAnchor] =

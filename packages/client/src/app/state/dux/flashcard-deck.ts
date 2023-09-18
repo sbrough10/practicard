@@ -1,17 +1,18 @@
-import { createSliceReducer } from "redux-util";
+import { GetRequest, createSliceReducer } from "redux-util";
 import {
+  ApiPath,
   FlashcardData,
   FlashcardFilterData,
   defaultFlashcardFilterData,
-} from "app/utilities/types";
+  getHitPercentage,
+} from "practicard-shared";
 import { FullState } from "./index.types";
-import {
-  loadStorageItem,
-  storeStorageItem,
-} from "../../utilities/local-storage";
+import { loadStorageItem, storeStorageItem } from "app/utilities/local-storage";
 import { FlashcardDeckState, types } from "./flashcard-deck.types";
 import { fetchCardMap, getFlashcardListFromStorage } from "./flashcard";
-import { getHitPercentage, randomInteger } from "../../utilities/common";
+import { randomInteger } from "app/utilities/common";
+import { select as allSelect } from "..";
+import { keyBy } from "lodash";
 
 const InitialState: FlashcardDeckState = {
   activeCardId: -1,
@@ -30,7 +31,16 @@ interface StorageFormatV1 {
 const fetchDeck = (): StorageFormatV1 =>
   loadStorageItem(STORAGE_KEY) ?? { flashcardIdList: [] };
 
-const MAX_PICK_RETRY = 25;
+// TODO - This is terrible. I'm just doing this because I'm lazy.
+const getCardMapFromFetch = async () => {
+  const list: FlashcardData[] = await new GetRequest(ApiPath.Flashcard, {
+    params: { filter: defaultFlashcardFilterData },
+  }).exec();
+
+  const map = keyBy(list, "id");
+
+  return { map };
+};
 
 const pickFlashcard = (
   list: FlashcardData[],
@@ -79,8 +89,12 @@ const pickFlashcard = (
 
 export const action = {
   createFlashcardDeck: (filter: FlashcardFilterData) =>
-    types.createFlashcardDeck.createAction(() => {
-      const list = getFlashcardListFromStorage(filter);
+    types.createFlashcardDeck.createAction(null, async (dispatch, getState) => {
+      const list: FlashcardData[] = allSelect.isLocalSession(getState())
+        ? getFlashcardListFromStorage(filter)
+        : await new GetRequest(ApiPath.Flashcard, {
+            params: { filter },
+          }).exec();
       storeStorageItem(STORAGE_KEY, {
         flashcardIdList: list.map((card) => card.id),
       });
@@ -88,22 +102,29 @@ export const action = {
     }),
 
   loadMaxHitPercentage: (deckId: 0) =>
-    types.loadMaxHitPercentage.createAction(() => {
-      const { map: cardMap } = fetchCardMap();
-      const { flashcardIdList } = fetchDeck();
-      return flashcardIdList.reduce((maxHitPercentage, id) => {
-        const currentHitPercentage = getHitPercentage(cardMap[id]);
-        return currentHitPercentage > maxHitPercentage
-          ? currentHitPercentage
-          : maxHitPercentage;
-      }, 0);
-    }),
+    types.loadMaxHitPercentage.createAction(
+      null,
+      async (dispatch, getState) => {
+        const { map: cardMap } = allSelect.isLocalSession(getState())
+          ? fetchCardMap()
+          : await getCardMapFromFetch();
+        const { flashcardIdList } = fetchDeck();
+        return flashcardIdList.reduce((maxHitPercentage, id) => {
+          const currentHitPercentage = getHitPercentage(cardMap[id]);
+          return currentHitPercentage > maxHitPercentage
+            ? currentHitPercentage
+            : maxHitPercentage;
+        }, 0);
+      }
+    ),
 
   // TODO - Add the concept of multiple decks
   pickFlashcard: (deckId: 0) =>
-    types.pickFlashcard.createAction((dispatch, getState) => {
+    types.pickFlashcard.createAction(null, async (dispatch, getState) => {
       const { flashcardIdList } = fetchDeck();
-      const { map } = fetchCardMap();
+      const { map } = allSelect.isLocalSession(getState())
+        ? fetchCardMap()
+        : await getCardMapFromFetch();
 
       // TODO - We definitely should not be fetching the data this way in this part of the code
       dispatch(
@@ -130,18 +151,24 @@ export const select = {
 };
 
 export const reducer = createSliceReducer(InitialState, [
-  types.createFlashcardDeck.createReducer((state, { filter, cardCount }) => {
-    return { ...state, activeFilter: filter, deckSize: cardCount };
+  types.createFlashcardDeck.createReducer({
+    success: (state, { filter, cardCount }) => {
+      return { ...state, activeFilter: filter, deckSize: cardCount };
+    },
   }),
-  types.loadMaxHitPercentage.createReducer((state, maxHitPercentage) => {
-    return { ...state, maxHitPercentage };
+  types.loadMaxHitPercentage.createReducer({
+    success: (state, maxHitPercentage) => {
+      return { ...state, maxHitPercentage };
+    },
   }),
 
-  types.pickFlashcard.createReducer((state, id) => {
-    return {
-      ...state,
-      activeCardId: id,
-      practiceHistory: [id, ...state.practiceHistory],
-    };
+  types.pickFlashcard.createReducer({
+    success: (state, id) => {
+      return {
+        ...state,
+        activeCardId: id,
+        practiceHistory: [id, ...state.practiceHistory],
+      };
+    },
   }),
 ]);

@@ -8,6 +8,9 @@ export const { classes } = addStylesheet({
   textInput: {
     width: "100%",
     height: "100%",
+    whiteSpace: "pre",
+    overflowWrap: "normal",
+    overflowX: "scroll",
   },
   buttonSection: {
     display: "flex",

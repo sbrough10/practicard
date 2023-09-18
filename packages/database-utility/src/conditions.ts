@@ -1,12 +1,14 @@
-import _ from 'lodash';
-import { Expression, getExpToString } from './oprations';
-import { CaseResult, f, handleSqlValue, SqlValue, TableField, TableValues } from './utils';
+import _ from "lodash";
+import { Expression, getExpToString } from "./oprations";
+import { f, SqlValue, TableField, TableValues } from "./utils";
 
-export class IfThenStatement<R extends CaseResult> {
-  constructor(private condition: Condition, private result: R | TableField) {}
+export class IfThenStatement {
+  constructor(private condition: Condition, private result: Expression) {}
 
   toString(): string {
-    return `WHEN ${this.condition.toString()} THEN ${handleSqlValue(this.result)}`;
+    return `WHEN ${this.condition.toString()} THEN ${getExpToString(
+      this.result
+    )}`;
   }
 }
 
@@ -19,8 +21,8 @@ export abstract class Condition {
     return new OrCondition(this, that);
   }
 
-  public then<R extends CaseResult>(result: R | TableField): IfThenStatement<R> {
-    return new IfThenStatement<R>(this, result);
+  public then(result: Expression): IfThenStatement {
+    return new IfThenStatement(this, result);
   }
 
   public abstract toString(): string;
@@ -33,26 +35,49 @@ class ConjunctionCondition extends Condition {
 
   public toString(): string {
     if (this.conditions.length === 0) {
-      return '';
+      return "";
     }
-    return `(${this.conditions.map(cond => cond.toString()).join(` ${this.conjunction} `)})`;
+    return `(${this.conditions
+      .map((cond) => cond.toString())
+      .join(` ${this.conjunction} `)})`;
   }
 }
 
 class AndCondition extends ConjunctionCondition {
   constructor(...conditions: Condition[]) {
-    super('AND', conditions);
+    super("AND", conditions);
   }
 }
 
 class OrCondition extends ConjunctionCondition {
   constructor(...conditions: Condition[]) {
-    super('OR', conditions);
+    super("OR", conditions);
+  }
+}
+
+class UnarySuffixOperatorCondition extends Condition {
+  constructor(private exp: Expression, private operator: string) {
+    super();
+  }
+
+  public toString(): string {
+    const exp = getExpToString(this.exp);
+    return `${exp} ${this.operator}`;
+  }
+}
+
+class IsNullCondition extends UnarySuffixOperatorCondition {
+  constructor(exp: Expression) {
+    super(exp, "IS NULL");
   }
 }
 
 class BinaryOperatorCondition extends Condition {
-  constructor(private expA: Expression, private expB: Expression, private operator: string) {
+  constructor(
+    private expA: Expression,
+    private expB: Expression,
+    private operator: string
+  ) {
     super();
   }
 
@@ -65,44 +90,47 @@ class BinaryOperatorCondition extends Condition {
 
 class EqualityCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, expB: Expression) {
-    super(expA, expB, '=');
+    super(expA, expB, "=");
   }
 }
 
 class NonEqualityCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, expB: Expression) {
-    super(expA, expB, '!=');
+    super(expA, expB, "!=");
   }
 }
 
 class GreaterThanCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, expB: Expression) {
-    super(expA, expB, '>');
+    super(expA, expB, ">");
   }
 }
 
 class LessThanCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, expB: Expression) {
-    super(expA, expB, '<');
+    super(expA, expB, "<");
   }
 }
 
 class LikeCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, value: string) {
-    super(expA, value, 'LIKE');
+    super(expA, value, "LIKE");
   }
 }
 
 class MatchCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, value: string, caseSensitive: boolean) {
-    super(expA, value, caseSensitive ? '~' : '~*');
+    super(expA, value, caseSensitive ? "~" : "~*");
   }
 }
 
 class ChainedConjunctionCondition extends Condition {
   constructor(
     private subConditions: TableValues,
-    private subConditionGenerator: (field: TableField, value: SqlValue) => Condition,
+    private subConditionGenerator: (
+      field: TableField,
+      value: SqlValue
+    ) => Condition,
     private conjunction: string
   ) {
     super();
@@ -110,31 +138,35 @@ class ChainedConjunctionCondition extends Condition {
 
   public toString(): string {
     if (Object.keys(this.subConditions).length === 0) {
-      return '';
+      return "";
     }
-    return `(${_.toPairs(this.subConditions).map(
-      ([field, value]) => this.subConditionGenerator(f(field), value)
-    ).join(` ${this.conjunction} `)})`;
+    return `(${_.toPairs(this.subConditions)
+      .map(([field, value]) => this.subConditionGenerator(f(field), value))
+      .join(` ${this.conjunction} `)})`;
   }
 }
 
 class AndEqualityCondition extends ChainedConjunctionCondition {
   constructor(equalities: TableValues) {
-    super(equalities, eq, 'AND');
+    super(equalities, eq, "AND");
   }
 }
 
 class OrEqualityCondition extends ChainedConjunctionCondition {
   constructor(equalities: TableValues) {
-    super(equalities, eq, 'OR');
+    super(equalities, eq, "OR");
   }
 }
 
 class AndLikeCondition extends ChainedConjunctionCondition {
   constructor(checks: TableValues) {
-    super(checks, like, 'AND');
+    super(checks, like, "AND");
   }
 }
+
+export const isNull = (exp: Expression): Condition => {
+  return new IsNullCondition(exp);
+};
 
 export const lt = (expA: Expression, expB: Expression): Condition => {
   return new LessThanCondition(expA, expB);
@@ -156,7 +188,11 @@ export const like = (expA: Expression, value: string): Condition => {
   return new LikeCondition(expA, value);
 };
 
-export const match = (expA: Expression, value: string | RegExp, caseSensitive = true): Condition => {
+export const match = (
+  expA: Expression,
+  value: string | RegExp,
+  caseSensitive = true
+): Condition => {
   if (value instanceof RegExp) {
     return new MatchCondition(expA, value.source, caseSensitive);
   }

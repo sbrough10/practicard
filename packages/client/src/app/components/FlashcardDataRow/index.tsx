@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlashcardData, FlashcardTagData } from "../../utilities/types";
+import { FlashcardData, FlashcardTagData } from "practicard-shared";
 import { classes } from "./styles";
 import { RecordButton } from "../RecordingButton";
 import {
@@ -20,13 +20,13 @@ import {
 import clsx from "clsx";
 import { Checkbox } from "app/components/Checkbox";
 
-export interface FlaschardDataRowProps {
+export interface FlashcardDataRowProps {
   data: FlashcardData;
   selected?: boolean;
   onChangeSelect?: (id: number, isSelected: boolean) => void;
 }
 
-export const FlashcardDataRow: React.FC<FlaschardDataRowProps> = ({
+export const FlashcardDataRow: React.FC<FlashcardDataRowProps> = ({
   data,
   selected,
   onChangeSelect,

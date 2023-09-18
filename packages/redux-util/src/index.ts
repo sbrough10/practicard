@@ -1,5 +1,5 @@
-import { AnyAction, configureStore } from "@reduxjs/toolkit";
-import thunk, { ThunkDispatch } from "redux-thunk";
+import { configureStore } from "@reduxjs/toolkit";
+import thunk from "redux-thunk";
 import logger from "redux-logger";
 import { produce } from "immer";
 import { isEqual, set } from "lodash";
@@ -7,15 +7,15 @@ import {
   Action,
   Batch,
   BatchStatus,
+  Dispatch,
   ItemTemplate,
   WithBatchMap,
 } from "./types";
 
 import _ from "lodash";
 
+export * from "./http";
 export * from "./react";
-
-type Dispatch<State> = ThunkDispatch<State, undefined, Action<any>>;
 
 export const batchResolver = <Item extends ItemTemplate, Query>(
   state: WithBatchMap<Item, Query>,
@@ -56,6 +56,32 @@ export const getItemsWithBatch = <Item extends ItemTemplate, Query>(
     isUpdating: batch.isUpdating,
     isValid: batch.isValid,
   };
+};
+
+export const setItemBatchStatus = <Item extends ItemTemplate, Query>(
+  state: WithBatchMap<Item, Query>,
+  query: Query,
+  status: Partial<BatchStatus>
+) => {
+  const batchList = batchResolver(state, query);
+
+  if (batchList.length > 0) {
+    batchList.forEach((batch) => {
+      for (const key in status) {
+        batch[key] = status[key];
+      }
+    });
+  } else {
+    state.batchMap[JSON.stringify(query)] = {
+      isLoading: status.isLoading ?? false,
+      isValid: status.isValid ?? false,
+      isDeleting: status.isDeleting ?? false,
+      isUpdating: status.isUpdating ?? false,
+      lastFetched: status.lastFetched ?? new Date().getTime(),
+      query,
+      idList: [],
+    };
+  }
 };
 
 export const addItemBatch = <Item extends ItemTemplate, Query>(
@@ -111,7 +137,7 @@ export class AsyncActionType<FullState, PendingData, SuccessData, FailureData> {
       dispatch: Dispatch<FullState>,
       getState: () => FullState
     ) => Promise<SuccessData>,
-    fallback: (
+    fallback?: (
       error: any,
       dispatch: Dispatch<FullState>,
       getState: () => FullState
@@ -123,12 +149,14 @@ export class AsyncActionType<FullState, PendingData, SuccessData, FailureData> {
         .then((result) =>
           dispatch({ type: `${this.type}.success`, data: result })
         )
-        .catch((error) =>
+        .catch((error) => {
+          console.error(`Error in redux action: ${this.type}`);
+          console.error(error);
           dispatch({
             type: `${this.type}.failure`,
-            data: fallback(error, dispatch, getState),
-          })
-        );
+            data: fallback?.(error, dispatch, getState),
+          });
+        });
     };
   }
 

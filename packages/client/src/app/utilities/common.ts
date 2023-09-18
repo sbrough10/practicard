@@ -1,4 +1,4 @@
-import { FlashcardData } from "./types";
+import { FlashcardData, getHitPercentage } from "practicard-shared";
 
 export const randomInteger = (min: number, max: number): number => {
   const value = Math.floor(Math.random() * (1 + max - min) - min);
@@ -9,10 +9,6 @@ export const randomInteger = (min: number, max: number): number => {
     return randomInteger(min, max);
   }
   return value;
-};
-
-export const getHitPercentage = ({ hits, misses }: FlashcardData) => {
-  return hits / (hits + misses);
 };
 
 export const displayHitPercentage = (flashcard: FlashcardData) => {

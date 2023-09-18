@@ -1,8 +1,4 @@
-import express from "express";
-
-const app = express();
-
-app.use("/", express.static("../client/build"));
+import { app } from "./routes";
 
 const PORT = 4000;
 

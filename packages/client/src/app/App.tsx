@@ -1,16 +1,24 @@
-import React, { useCallback, useState } from "react";
-import { Provider } from "react-redux";
-import { store } from "./state";
-import { FlaschardDeckBuilderView } from "./views/FlaschardDeckBuilderView";
+import React, { useCallback, useEffect, useState } from "react";
+import { FlashcardDeckBuilderView } from "./views/FlashcardDeckBuilderView";
 import {
   FlashcardFilterData,
   defaultFlashcardFilterData,
-} from "./utilities/types";
-import { FlaschardPracticeView } from "./views/FlashcardPracticeView";
+} from "practicard-shared";
+import { FlashcardPracticeView } from "app/views/FlashcardPracticeView";
+import { useHasSession } from "app/state";
+import { WorkspaceSelectorView } from "./views/WorkspaceSelectorView";
 
 export const App: React.FC = () => {
   const [isPracticing, setIsPracticing] = useState(false);
   const [filter, setFilter] = useState(defaultFlashcardFilterData);
+
+  const hasSession = useHasSession();
+
+  useEffect(() => {
+    if (!hasSession) {
+      setFilter(defaultFlashcardFilterData);
+    }
+  }, [hasSession]);
 
   const onStartPractice = useCallback(() => {
     setIsPracticing(true);
@@ -24,17 +32,19 @@ export const App: React.FC = () => {
     setFilter(filter);
   }, []);
 
+  if (!hasSession) {
+    return <WorkspaceSelectorView />;
+  }
+
+  if (isPracticing) {
+    return <FlashcardPracticeView onExit={onExitPractice} />;
+  }
+
   return (
-    <Provider store={store}>
-      {isPracticing ? (
-        <FlaschardPracticeView onExit={onExitPractice} />
-      ) : (
-        <FlaschardDeckBuilderView
-          filter={filter}
-          onChangeFilter={onChangeFilter}
-          onStartPractice={onStartPractice}
-        />
-      )}
-    </Provider>
+    <FlashcardDeckBuilderView
+      filter={filter}
+      onChangeFilter={onChangeFilter}
+      onStartPractice={onStartPractice}
+    />
   );
 };

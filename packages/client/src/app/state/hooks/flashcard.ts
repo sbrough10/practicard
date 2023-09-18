@@ -1,11 +1,17 @@
 import { useCallback, useEffect } from "react";
 import { action, select, useSelector, useDispatch } from "..";
-import { FlashcardData, FlashcardTagData } from "../../utilities/types";
-import { FlashcardQuery } from "../dux/flashcard.types";
+import {
+  FlashcardData,
+  FlashcardTagData,
+  FlashcardCreationData,
+  NewTagToFlashcardMap,
+} from "practicard-shared";
+import { FlashcardQuery } from "app/state/dux/flashcard.types";
+import { BatchWithItemList } from "redux-util";
 
-export const useFlaschardList = (
+export const useFlashcardBatch = (
   query: FlashcardQuery
-): FlashcardData[] | undefined => {
+): BatchWithItemList<FlashcardData> | undefined => {
   const dispatch = useDispatch();
 
   const flashcardBatch = useSelector((state) =>
@@ -21,10 +27,10 @@ export const useFlaschardList = (
     }
   }, [dispatch, flashcardBatch]);
 
-  return flashcardBatch?.list;
+  return flashcardBatch;
 };
 
-export const useCreateFlaschard = () => {
+export const useCreateFlashcard = () => {
   const dispatch = useDispatch();
 
   return useCallback(
@@ -39,8 +45,19 @@ export const useCreateFlashcardList = () => {
   const dispatch = useDispatch();
 
   return useCallback(
-    (data: Partial<Omit<FlashcardData, "id">>[]) => {
+    (data: Partial<FlashcardCreationData>[]) => {
       dispatch(action.createFlashcardList(data));
+    },
+    [dispatch]
+  );
+};
+
+export const useCreateFlashcardListWithNewTagMap = () => {
+  const dispatch = useDispatch();
+
+  return useCallback(
+    (tagMap: NewTagToFlashcardMap, newCardList: FlashcardCreationData[]) => {
+      dispatch(action.createFlashcardListWithNewTagMap(tagMap, newCardList));
     },
     [dispatch]
   );

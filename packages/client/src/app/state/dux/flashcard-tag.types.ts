@@ -1,6 +1,6 @@
-import { ActionType } from "redux-util";
+import { ActionType, AsyncActionType } from "redux-util";
 import { FullState } from "./index.types";
-import { FlashcardTagData } from "../../utilities/types";
+import { FlashcardTagData } from "practicard-shared";
 
 export type FlashcardTagMap = {
   [id: FlashcardTagData["id"]]: FlashcardTagData;
@@ -12,12 +12,21 @@ export interface FlashcardTagState {
 }
 
 export const types = {
-  loadFlashcardTagMap: new ActionType<FullState, FlashcardTagMap>(
-    "flashcardTag.load"
+  queueLoadFlashcardTagMap: new ActionType<FullState, void>(
+    "flashcardTag.queueLoad"
   ),
-  createFlashcardTag: new ActionType<FullState, FlashcardTagData>(
-    "flashcardTag.create"
-  ),
+  loadFlashcardTagMap: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardTagMap,
+    unknown
+  >("flashcardTag.load"),
+  createFlashcardTag: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardTagData,
+    unknown
+  >("flashcardTag.create"),
   updateFlashcardTag: new ActionType<FullState, FlashcardTagData>(
     "flashcardTag.update"
   ),

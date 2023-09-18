@@ -1,7 +1,7 @@
 import React from "react";
 import { BasePopupView } from "../BasePopupView";
 import { FlashcardDataRow } from "../FlashcardDataRow";
-import { FlashcardData } from "app/utilities/types";
+import { FlashcardData } from "practicard-shared";
 
 export interface SingleFlashcardEditorProps {
   data: FlashcardData;

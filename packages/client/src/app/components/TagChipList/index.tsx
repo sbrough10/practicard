@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { FlashcardTagData } from "app/utilities/types";
+import { FlashcardTagData } from "practicard-shared";
 import { useFlashcardTagMap } from "app/state";
 import { TagChip } from "app/components/TagChip";
 import { classes } from "./styles";

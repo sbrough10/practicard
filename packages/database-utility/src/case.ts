@@ -1,17 +1,26 @@
-import { IfThenStatement } from './conditions';
-import { CaseResult, handleSqlValue, TableField } from './utils';
+import { IfThenStatement } from "./conditions";
+import { Expression, getExpToString, SpecialExpression } from "./oprations";
 
-export class CaseStatement<R extends CaseResult> {
-  constructor(private ifThens: IfThenStatement<R>[], private elseResult: R | TableField) {
+export class CaseStatement extends SpecialExpression {
+  constructor(
+    private ifThens: IfThenStatement[],
+    private elseResult: Expression
+  ) {
+    super();
   }
 
   toString(): string {
-    const ifThenString = this.ifThens.map(ifThen => ifThen.toString()).join('\n');
+    const ifThenString = this.ifThens
+      .map((ifThen) => ifThen.toString())
+      .join("\n");
 
-    return `(CASE ${ifThenString} ELSE ${handleSqlValue(this.elseResult)} END)`;
+    return `(CASE ${ifThenString} ELSE ${getExpToString(this.elseResult)} END)`;
   }
 }
 
-export const caseWhen = <R extends CaseResult>(ifThens: IfThenStatement<R>[], elseResult: R | TableField) => {
-  return new CaseStatement<R>(ifThens, elseResult);
+export const caseWhen = (
+  ifThens: IfThenStatement[],
+  elseResult: Expression
+) => {
+  return new CaseStatement(ifThens, elseResult);
 };

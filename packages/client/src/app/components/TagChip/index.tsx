@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { FlashcardTagData } from "../../utilities/types";
+import { FlashcardTagData } from "practicard-shared";
 import { classes } from "./styles";
 import Color from "color";
 import { IconButton } from "../IconButton";
@@ -45,7 +45,6 @@ export const TagChip: React.FC<TagChipProps> = ({
 
   return (
     <button
-      disabled={!onClick}
       className={classes.root}
       onClick={onChipClick}
       style={{

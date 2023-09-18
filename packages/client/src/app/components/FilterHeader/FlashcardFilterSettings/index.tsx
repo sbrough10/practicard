@@ -6,7 +6,7 @@ import {
 } from "app/components/BasePopupView";
 import { TagChipList } from "app/components/TagChipList";
 import { Checkbox } from "app/components/Checkbox";
-import { FlashcardFilterData, FlashcardTagData } from "app/utilities/types";
+import { FlashcardFilterData, FlashcardTagData } from "practicard-shared";
 import { MaxHitPercentageInput } from "./MaxHitPercentageInput";
 import { classes } from "./styles";
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { action, select, useDispatch, useSelector } from "..";
-import { FlashcardFilterData } from "../../utilities/types";
+import { FlashcardFilterData } from "practicard-shared";
 import { isEqual } from "lodash";
 
 // TODO - Allow multiple decks

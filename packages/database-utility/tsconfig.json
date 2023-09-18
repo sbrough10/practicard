@@ -2,16 +2,12 @@
   "compilerOptions": {
     "target": "es6",
     "module": "commonjs",
-    "outDir": "./lib",
+    "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -21,11 +17,6 @@
     "noEmit": false,
     "declaration": true
   },
-  "include": [
-    "./src/*"
-  ],
-  "exclude": [
-    "lib",
-    "node_modules"
-  ]
+  "include": ["./src/*"],
+  "exclude": ["dist", "node_modules"]
 }

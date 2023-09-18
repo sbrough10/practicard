@@ -3,22 +3,34 @@ import {
   batchResolver,
   BatchWithItemList,
   createSliceReducer,
+  DeleteRequest,
   getBatchListByIdList,
   getItemsWithBatch,
+  GetRequest,
+  PostRequest,
+  PutRequest,
+  setItemBatchStatus,
 } from "redux-util";
 import { types, FlashcardState, FlashcardQuery } from "./flashcard.types";
+import { types as sessionTypes } from "./session.types";
 import {
   FlashcardData,
   FlashcardFilterData,
   FlashcardTagData,
-} from "../../utilities/types";
+  FlashcardCreationData,
+  NewTagToFlashcardMap,
+  getHitPercentage,
+  ApiPath,
+  defaultFlashcardData,
+} from "practicard-shared";
 import { FullState } from "./index.types";
 import _ from "lodash";
 import {
   loadStorageItem,
   storeStorageItem,
 } from "../../utilities/local-storage";
-import { getHitPercentage } from "app/utilities/common";
+import { createTagList } from "./flashcard-tag";
+import { select as allSelect } from "..";
 
 const InitialState: FlashcardState = {
   byId: {},
@@ -90,7 +102,7 @@ const addTagToFlashcardList = (
   flashcardIdList.forEach((id) => {
     const flashcard = map[id];
     if (!flashcard) {
-      throw Error("Flaschard does not exist");
+      throw Error("Flashcard does not exist");
     }
     const { tagIdList } = flashcard;
     if (tagIdList.indexOf(tagId) === -1) {
@@ -107,7 +119,7 @@ const removeTagFromFlashcardList = (
   flashcardIdList.forEach((id) => {
     const flashcard = map[id];
     if (!flashcard) {
-      throw Error("Flaschard does not exist");
+      throw Error("Flashcard does not exist");
     }
     const { tagIdList } = flashcard;
     const tagIndex = tagIdList.indexOf(tagId);
@@ -119,69 +131,138 @@ const removeTagFromFlashcardList = (
 
 export const action = {
   loadFlashcard: (id: FlashcardData["id"]) =>
-    types.loadFlashcard.createAction(() => {
-      const { map } = fetchCardMap();
-      return map[id];
-    }),
-  loadFlashcardList: (query: FlashcardQuery) =>
-    types.loadFlashcardList.createAction(() => {
-      const list = getFlashcardListFromStorage(query.filter);
-      return { list, query };
-    }),
-
-  createFlashcardList: (data: Partial<Omit<FlashcardData, "id">>[] = [{}]) =>
-    types.createFlashcardList.createAction((dispatch) => {
-      const { map, lastId } = fetchCardMap();
-      let index: number;
-      const newFlaschardList: FlashcardData[] = [];
-      for (index = 0; index < data.length; index++) {
-        const card: FlashcardData = {
-          id: index + lastId,
-          frontText: "",
-          backText: "",
-          hits: 0,
-          misses: 1,
-          tagIdList: [],
-          ...data[index],
-        };
-        map[card.id] = card;
-        newFlaschardList.push(card);
+    types.loadFlashcard.createAction(
+      id,
+      async (dispatch, getState) => {
+        if (allSelect.isLocalSession(getState())) {
+          const { map } = fetchCardMap();
+          return map[id];
+        }
+        const req = new GetRequest(ApiPath.FlashcardById, {
+          params: { flashcardId: id },
+        });
+        return await req.exec();
+      },
+      () => {
+        return id;
       }
-      storeStorageItem(STORAGE_KEY, { map, lastId: lastId + index });
+    ),
+  loadFlashcardList: (query: FlashcardQuery) =>
+    types.loadFlashcardList.createAction(
+      query,
+      async (dispatch, getState) => {
+        if (allSelect.isLocalSession(getState())) {
+          const list = getFlashcardListFromStorage(query.filter);
+          return { list, query };
+        }
+        const req = new GetRequest(ApiPath.Flashcard, { params: query });
+        return { list: await req.exec(), query };
+      },
+      () => query
+    ),
+
+  createFlashcardListWithNewTagMap: (
+    tagMap: NewTagToFlashcardMap,
+    newCardList: FlashcardCreationData[]
+  ) =>
+    types.createFlashcardListFromNewTagMap.createAction(
+      null,
+      async (dispatch, getState) => {
+        const tagList: FlashcardTagData[] = allSelect.isLocalSession(getState())
+          ? createTagList(Object.keys(tagMap))
+          : Object.values(
+              await new PostRequest(ApiPath.FlashcardTag, {
+                body: { labelList: Object.keys(tagMap) },
+              }).exec()
+            );
+        // TODO - This should probably not be handled in separate dispatch requests, but I'm lazy
+        tagList.forEach((tag) => {
+          tagMap[tag.label].forEach((newCard) => {
+            newCard.tagIdList = [...(newCard.tagIdList ?? []), tag.id];
+          });
+        });
+        dispatch(action.createFlashcardList(newCardList));
+        return tagList;
+      }
+    ),
+
+  createFlashcardList: (data: Partial<FlashcardCreationData>[] = [{}]) =>
+    types.createFlashcardList.createAction(null, async (dispatch, getState) => {
+      const newFlashcardList: FlashcardData[] = [];
+      if (allSelect.isLocalSession(getState())) {
+        const { map, lastId } = fetchCardMap();
+        let index: number;
+        for (index = 0; index < data.length; index++) {
+          const card: FlashcardData = {
+            id: index + lastId,
+            ...defaultFlashcardData,
+            ...data[index],
+          };
+          map[card.id] = card;
+          newFlashcardList.push(card);
+        }
+        storeStorageItem(STORAGE_KEY, { map, lastId: lastId + index });
+      } else {
+        const req = new PostRequest(ApiPath.Flashcard, {
+          body: data.map((newCardData) => ({
+            ...defaultFlashcardData,
+            ...newCardData,
+          })),
+        });
+        newFlashcardList.push(...(await req.exec()));
+      }
 
       setTimeout(() => {
         dispatch(
           action.removeFlashcardFromRecentlyCreated(
-            newFlaschardList.map((card) => card.id)
+            newFlashcardList.map((card) => card.id)
           )
         );
       }, 500);
 
-      return newFlaschardList;
+      return newFlashcardList;
     }),
 
   removeFlashcardFromRecentlyCreated: (idList: FlashcardData["id"][]) =>
     types.removeFlashcardListFromRecentlyCreated.createAction(() => idList),
 
   updateFlashcard: (id: FlashcardData["id"], data: Partial<FlashcardData>) =>
-    types.updateFlashcard.createAction(() => {
-      const { map, lastId } = fetchCardMap();
-      const flashcard = map[id];
-      map[id] = { ...flashcard, ...data };
-      storeStorageItem(STORAGE_KEY, { map, lastId });
+    types.updateFlashcard.createAction(null, async (dispatch, getState) => {
+      if (allSelect.isLocalSession(getState())) {
+        const { map, lastId } = fetchCardMap();
+        const flashcard = map[id];
+        map[id] = { ...flashcard, ...data };
+        storeStorageItem(STORAGE_KEY, { map, lastId });
+      } else {
+        const req = new PutRequest(ApiPath.FlashcardById, {
+          params: { flashcardId: id },
+          body: data,
+        });
+        await req.exec();
+      }
       return { id, data };
     }),
 
   deleteFlashcardList: (idList: FlashcardData["id"][]) =>
-    types.markFlashcardListForDeletion.createAction((dispatch) => {
-      const { map, lastId } = fetchCardMap();
-      deleteFlashcardList(map, idList);
-      storeStorageItem(STORAGE_KEY, { map, lastId });
-      setTimeout(() => {
-        dispatch(action.finalizeFlashcardListDeletion());
-      }, 0);
-      return idList;
-    }),
+    types.markFlashcardListForDeletion.createAction(
+      null,
+      async (dispatch, getState) => {
+        if (allSelect.isLocalSession(getState())) {
+          const { map, lastId } = fetchCardMap();
+          deleteFlashcardList(map, idList);
+          storeStorageItem(STORAGE_KEY, { map, lastId });
+        } else {
+          const req = new DeleteRequest(ApiPath.Flashcard, {
+            body: idList,
+          });
+          await req.exec();
+        }
+        setTimeout(() => {
+          dispatch(action.finalizeFlashcardListDeletion());
+        }, 0);
+        return idList;
+      }
+    ),
 
   finalizeFlashcardListDeletion: () =>
     types.finalizeFlashcardListDeletion.createAction(() => {}),
@@ -190,23 +271,49 @@ export const action = {
     tagId: FlashcardTagData["id"],
     flashcardIdList: FlashcardData["id"][]
   ) =>
-    types.addTagToFlashcardList.createAction(() => {
-      const { map, lastId } = fetchCardMap();
-      addTagToFlashcardList(map, tagId, flashcardIdList);
-      storeStorageItem(STORAGE_KEY, { map, lastId });
-      return { tagId, flashcardIdList };
-    }),
+    types.addTagToFlashcardList.createAction(
+      null,
+      async (dispatch, getState) => {
+        if (allSelect.isLocalSession(getState())) {
+          const { map, lastId } = fetchCardMap();
+          addTagToFlashcardList(map, tagId, flashcardIdList);
+          storeStorageItem(STORAGE_KEY, { map, lastId });
+        } else {
+          const req = new PutRequest(ApiPath.FlashcardTagIdList, {
+            body: {
+              addedTagIdList: [tagId],
+              removedTagIdList: [],
+              flashcardIdList,
+            },
+          });
+        }
+        return { tagId, flashcardIdList };
+      }
+    ),
 
   removeTagFromFlashcardList: (
     tagId: FlashcardTagData["id"],
     flashcardIdList: FlashcardData["id"][]
   ) =>
-    types.removeTagFromFlashcardList.createAction(() => {
-      const { map, lastId } = fetchCardMap();
-      removeTagFromFlashcardList(map, tagId, flashcardIdList);
-      storeStorageItem(STORAGE_KEY, { map, lastId });
-      return { tagId, flashcardIdList };
-    }),
+    types.removeTagFromFlashcardList.createAction(
+      null,
+      async (dispatch, getState) => {
+        if (allSelect.isLocalSession(getState())) {
+          const { map, lastId } = fetchCardMap();
+          removeTagFromFlashcardList(map, tagId, flashcardIdList);
+          storeStorageItem(STORAGE_KEY, { map, lastId });
+        } else {
+          const req = new PutRequest(ApiPath.FlashcardTagIdList, {
+            body: {
+              addedTagIdList: [],
+              removedTagIdList: [tagId],
+              flashcardIdList,
+            },
+          });
+        }
+        return { tagId, flashcardIdList };
+      }
+    ),
 };
 
 export const select = {
@@ -238,29 +345,42 @@ export const select = {
 };
 
 export const reducer = createSliceReducer(InitialState, [
-  types.loadFlashcard.createReducer((state, flashcard) => {
-    state.byId[flashcard.id] = flashcard;
-    return state;
+  types.loadFlashcard.createReducer({
+    success: (state, flashcard) => {
+      state.byId[flashcard.id] = flashcard;
+      return state;
+    },
   }),
 
-  types.loadFlashcardList.createReducer((state, { list, query }) => {
-    addItemBatch(state, query, list);
-
-    return state;
+  types.loadFlashcardList.createReducer({
+    pending: (state, query) => {
+      setItemBatchStatus(state, query, { isLoading: true });
+      return state;
+    },
+    success: (state, { list, query }) => {
+      addItemBatch(state, query, list);
+      return state;
+    },
+    failure: (state, query) => {
+      setItemBatchStatus(state, query, { isLoading: false });
+      return state;
+    },
   }),
 
-  types.createFlashcardList.createReducer((state, flashcardList) => {
-    flashcardList.forEach((card) => {
-      state.byId[card.id] = card;
-    });
+  types.createFlashcardList.createReducer({
+    success: (state, flashcardList) => {
+      flashcardList.forEach((card) => {
+        state.byId[card.id] = card;
+      });
 
-    batchResolver(state, {}).forEach((batch) => {
-      batch.isValid = false;
-    });
+      batchResolver(state, {}).forEach((batch) => {
+        batch.isValid = false;
+      });
 
-    state.recentlyCreated.push(...flashcardList.map((card) => card.id));
+      state.recentlyCreated.push(...flashcardList.map((card) => card.id));
 
-    return state;
+      return state;
+    },
   }),
 
   types.removeFlashcardListFromRecentlyCreated.createReducer(
@@ -275,19 +395,23 @@ export const reducer = createSliceReducer(InitialState, [
     }
   ),
 
-  types.updateFlashcard.createReducer((state, { id, data }) => {
-    Object.assign(state.byId[id], data);
+  types.updateFlashcard.createReducer({
+    success: (state, { id, data }) => {
+      Object.assign(state.byId[id], data);
 
-    batchResolver(state, {}).forEach((batch) => {
-      batch.isValid = false;
-    });
+      batchResolver(state, {}).forEach((batch) => {
+        batch.isValid = false;
+      });
 
-    return state;
+      return state;
+    },
   }),
 
-  types.markFlashcardListForDeletion.createReducer((state, idList) => {
-    state.markedForDeletion = [...state.markedForDeletion, ...idList];
-    return state;
+  types.markFlashcardListForDeletion.createReducer({
+    success: (state, idList) => {
+      state.markedForDeletion = [...state.markedForDeletion, ...idList];
+      return state;
+    },
   }),
 
   types.finalizeFlashcardListDeletion.createReducer((state) => {
@@ -298,21 +422,33 @@ export const reducer = createSliceReducer(InitialState, [
     return state;
   }),
 
-  types.addTagToFlashcardList.createReducer(
-    (state, { tagId, flashcardIdList }) => {
+  types.addTagToFlashcardList.createReducer({
+    success: (state, { tagId, flashcardIdList }) => {
       getBatchListByIdList(state, flashcardIdList).forEach((batch) => {
         batch.isValid = false;
       });
       return state;
-    }
-  ),
+    },
+  }),
 
-  types.removeTagFromFlashcardList.createReducer(
-    (state, { tagId, flashcardIdList }) => {
+  types.removeTagFromFlashcardList.createReducer({
+    success: (state, { tagId, flashcardIdList }) => {
       getBatchListByIdList(state, flashcardIdList).forEach((batch) => {
         batch.isValid = false;
       });
       return state;
-    }
-  ),
+    },
+  }),
+
+  sessionTypes.endSession.createReducer({
+    success: (state) => {
+      const batchList = batchResolver(state, {});
+
+      batchList.forEach(() => {
+        setItemBatchStatus(state, {}, { isValid: false });
+      });
+
+      return state;
+    },
+  }),
 ]);

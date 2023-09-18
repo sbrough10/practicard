@@ -1,58 +1,56 @@
-import * as pg from 'pg';
-import _ from 'lodash';
-import { handleSqlValue, SqlValue, TableFields, TableValues } from './utils';
-import { Limit, Offset } from './clauses';
-import { Condition } from './conditions';
-import { Order } from './order'
-import { Selector } from './selectors';
+import * as pg from "pg";
+import _ from "lodash";
+import {
+  CalculatedConfig,
+  GeneratedTableFields,
+  handleSqlValue,
+  SequenceConfig,
+  sequenceConfigToString,
+  SqlValue,
+  TableField,
+  TableFields,
+  TableValues,
+} from "./utils";
+import { Condition } from "./conditions";
+import { buildClauseString, Clause, Join, JoinType } from "./clauses";
+import { Expression, getExpToString } from "./oprations";
+import { AggregateFunction } from "./aggregate-functions";
 
-export * from './data-types';
-export { caseWhen } from './case';
-export type { Limit, Offset } from './clauses';
-export { limit, offset } from './clauses';
-export * from './conditions';
-export { op } from './oprations';
-export type { Order, SortExpression } from './order';
-export { asc, desc } from './order'
-export type { Selector } from './selectors';
-export { min, max } from './selectors';
-export { f } from './utils';
+export { min, max } from "./aggregate-functions";
+export * from "./data-types";
+export { caseWhen } from "./case";
+export type { Limit, Offset } from "./clauses";
+export { limit, offset } from "./clauses";
+export * from "./conditions";
+export { concat, op, replace } from "./oprations";
+export type { Expression } from "./oprations";
+export type { Order, SortExpression } from "./order";
+export { asc, desc } from "./order";
+export { f, CalculatedConfig, SequenceConfig } from "./utils";
 
-export interface TableOptions {
-
-}
-
-enum TableAction {
-  Create = 'create',
-  Remove = 'remove',
-}
-
-interface QueuedTable {
-  action: TableAction;
-  name: string;
-  fields?: TableFields;
-  options?: TableOptions;
+export interface TableOptions<G extends GeneratedTableFields> {
+  generatedFields?: G;
 }
 
 export class PostgressDatabase {
   private client: pg.Client;
-  private tableQueue: QueuedTable[] = [];
+  private queryQueue: string[] = [];
 
   constructor(connectionString: string) {
     this.client = new pg.Client({
       connectionString,
-      ...( process.env.DATABASE_URL
+      ...(process.env.DATABASE_URL
         ? {
-          ssl: {
-            rejectUnauthorized: false,
+            ssl: {
+              rejectUnauthorized: false,
+            },
           }
-        } : {}
-      )
+        : {}),
     });
   }
 
   public query(req: string) {
-    return new Promise<pg.QueryResult>(resolve => {
+    return new Promise<pg.QueryResult>((resolve) => {
       this.client.query(req, (error, results) => {
         if (error) {
           console.log(`Query failed: ${req}`);
@@ -67,134 +65,168 @@ export class PostgressDatabase {
   public async init() {
     await this.client.connect();
 
-    this.tableQueue.forEach((table) => {
-      switch (table.action) {
-        case TableAction.Create: {
-          const tableFields = `(\n${
-            _.toPairs(table.fields).map(
-              ([fieldName, dataType]) => `"${fieldName}" ${dataType.toString()}`
-            ).join(',\n')
-          }\n)`;
-          this.query(`CREATE TABLE IF NOT EXISTS "${table.name}" ${tableFields};`);
-          break;
-        }
-        case TableAction.Remove: {
-          this.query(`DROP TABLE IF EXISTS "${table.name}";`);
-          break;
-        }
-      }
+    this.queryQueue.forEach((query) => {
+      this.query(query);
     });
   }
 
-  public createTable<F extends TableFields>(name: string, fields: F, options?: TableOptions) {
-    this.tableQueue.push({
-      action: TableAction.Create,
-      name,
-      fields,
-      options,
-    });
+  public createTable<F extends TableFields, G extends GeneratedTableFields>(
+    name: string,
+    fields: F,
+    options?: TableOptions<G>
+  ) {
+    const { generatedFields } = options ?? {};
+    const tableFields = [
+      "(",
+      [
+        ...(generatedFields
+          ? _.toPairs(generatedFields).map(([fieldName, { type, config }]) => {
+              const getConfigString = () => {
+                if (config instanceof SequenceConfig) {
+                  return `IDENTITY\n(${sequenceConfigToString(config)})`;
+                }
+                if (config instanceof CalculatedConfig) {
+                  return `${config.toString()} STORED`;
+                }
+                return "IDENTITY";
+              };
+
+              return `"${fieldName}" ${type} GENERATED ALWAYS AS ${getConfigString()}`;
+            })
+          : []),
+        ..._.toPairs(fields).map(
+          ([fieldName, dataType]) => `"${fieldName}" ${dataType.toString()}`
+        ),
+      ].join(",\n"),
+      ")",
+    ].join("\n");
+    this.queryQueue.push(
+      `CREATE TABLE IF NOT EXISTS "${name}" ${tableFields};`
+    );
     return new Table(this, name, fields, options);
   }
 
   public removeTable(name: string) {
-    this.tableQueue.push({
-      action: TableAction.Remove,
-      name,
-    });
+    this.queryQueue.push(`DROP TABLE IF EXISTS "${name}";`);
   }
 }
 
 export type QueryResult<R> = pg.QueryResult<Partial<TableValues<R>>>;
 
-type Clause = Order | Condition | Limit | Offset;
+export class Table<F extends TableFields, G extends GeneratedTableFields> {
+  constructor(
+    private database: PostgressDatabase,
+    private name: string,
+    fields: F,
+    options?: TableOptions<G>
+  ) {}
 
-const buildClauseString = (clauses: Clause[]): string => {
-  let where = '';
-  const orders: string[] = [];
-  let endString = '';
-
-  clauses.forEach(clause => {
-    if (clause instanceof Condition) {
-      const condition = clause.toString();
-      if (condition.length > 0) {
-        where = ` WHERE ${condition}`;
-      }
-    } else if (clause instanceof Order) {
-      orders.push(clause.toString());
-    } else {
-      endString += clause.toString();
-    }
-  });
-
-  if (orders.length > 0) {
-    endString = ` ORDER BY ${orders.join(', ')}` + endString;
+  f(name: string | TemplateStringsArray) {
+    return new TableField(_.isString(name) ? name : name.raw[0], this.name);
   }
 
-  return where + endString;
-};
-
-export class Table<F extends TableFields> {
-  constructor(private database: PostgressDatabase, private name: string, fields: F, options?: TableOptions) {
+  fl(...nameList: (keyof F | keyof G)[]) {
+    return nameList.map((name) => new TableField(String(name), this.name));
   }
 
-  async insert(...data: TableValues<F>[]) {
-    if (data.length === 0) {
-      throw Error('Db Util Insert Error: Array of value sets must have at least 1 entry');
+  async insert(
+    recordList: TableValues<F>[],
+    returnFieldList?: (keyof F | keyof G)[]
+  ) {
+    if (recordList.length === 0) {
+      throw Error(
+        "Db Util Insert Error: Array of value sets must have at least 1 entry"
+      );
     }
 
     const columns: string[] = [];
     const valueSets: string[] = [];
 
     // Take the keys from the first set of value sets as the fields being inserted
-    Object.keys(data[0]).forEach(field => {
+    const keyList = Object.keys(recordList[0]);
+    keyList.forEach((field) => {
       columns.push(`"${field}"`);
     });
 
-    for (const row of data) {
+    for (const row of recordList) {
       const values: SqlValue[] = [];
-      for (const column in row) {
-        const value = row[column];
+      for (const key of keyList) {
+        // All objects should have the same list of keys
+        // but if one does not, its value for missing keys will be blank
+        const value = row[key] ?? "";
         values.push(handleSqlValue(value));
       }
-      valueSets.push(`(${values.join(', ')})`);
+      valueSets.push(`(${values.join(", ")})`);
     }
 
+    const returnString = returnFieldList
+      ? ` RETURNING ${
+          returnFieldList.length > 0
+            ? returnFieldList.map((field) => `"${String(field)}"`).join(", ")
+            : "*"
+        }`
+      : "";
+
     return await this.database.query(
-      `INSERT INTO "${this.name}" (${columns.join(', ')}) VALUES ${valueSets.join(', ')};`
+      `INSERT INTO "${this.name}" (${columns.join(
+        ", "
+      )}) VALUES ${valueSets.join(", ")}${returnString};`
     );
   }
 
-  async update(data: Partial<TableValues<F>>, where: Condition) {
+  async update(data: { [field: string]: Expression }, where: Condition) {
     const setStrings: string[] = [];
     for (let column in data) {
-      setStrings.push(`"${column}"=${handleSqlValue(data[column])}`);
+      setStrings.push(`"${column}"=${getExpToString(data[column])}`);
     }
     return await this.database.query(
-      `UPDATE "${this.name}" SET ${setStrings.join(', ')} WHERE ${where.toString()};`
+      `UPDATE "${this.name}" SET ${setStrings.join(
+        ", "
+      )} WHERE ${where.toString()};`
     );
   }
 
-  async select(fields: (keyof F | Selector<F>)[], ...clauses: Clause[]) {
-    const fieldsString = fields ? fields.map(field => {
-      if (_.isString(field)) {
-        return `"${field}"`;
-      }
-      // Assume it is a Selector
-      return (field as Selector<F>).toString();
-    }).join(', ') : '*';
+  async select(
+    fields: (keyof F | keyof G | Expression | AggregateFunction)[],
+    ...clauses: Clause[]
+  ) {
+    const fieldsString =
+      fields.length > 0
+        ? fields
+            .map((field) => {
+              if (_.isString(field)) {
+                return `"${field}"`;
+              }
+              return field.toString();
+            })
+            .join(", ")
+        : "*";
 
-    return await this.database.query(
+    return (await this.database.query(
       `SELECT ${fieldsString} FROM "${this.name}"${buildClauseString(clauses)};`
-    ) as QueryResult<F>;
+    )) as QueryResult<F & G>;
   }
 
   async selectAll(...clauses: Clause[]) {
-    return await this.database.query(
-      `SELECT * FROM "${this.name}"${buildClauseString(clauses)};`
-    ) as QueryResult<F>;
+    return await this.select([], ...clauses);
+  }
+
+  fullJoin(on: Condition): Join {
+    return new Join(JoinType.Full, this.name, on);
+  }
+  leftJoin(on: Condition): Join {
+    return new Join(JoinType.Left, this.name, on);
+  }
+  rightJoin(on: Condition): Join {
+    return new Join(JoinType.Right, this.name, on);
+  }
+  innerJoin(on: Condition): Join {
+    return new Join(JoinType.Inner, this.name, on);
   }
 
   async delete(where?: Condition) {
-    return await this.database.query(`DELETE FROM "${this.name}"${where ? ` WHERE ${where.toString()}` : ''};`);
+    return await this.database.query(
+      `DELETE FROM "${this.name}"${where ? ` WHERE ${where.toString()}` : ""};`
+    );
   }
 }

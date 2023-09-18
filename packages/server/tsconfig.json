@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "app/*": ["app/*"]
+    },
     "target": "es6",
     "module": "commonjs",
     "outDir": "./dist",
@@ -14,8 +18,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
-    "baseUrl": "src"
+    "noEmit": false
   },
   "include": ["./src/*"],
   "exclude": ["dist", "node_modules"]

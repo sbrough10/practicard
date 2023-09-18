@@ -1,4 +1,4 @@
-import { SqlDataType } from './utils';
+import { SqlDataType } from "./utils";
 
 export class Varchar implements SqlDataType {
   constructor(private size: number) {}
@@ -24,26 +24,32 @@ export class Decimal implements SqlDataType {
   }
 }
 
-export const SqlBoolean = new class implements SqlDataType {
+export const SqlBoolean = new (class implements SqlDataType {
   toString() {
-    return 'boolean';
+    return "boolean";
   }
-}
+})();
 
-export const SqlTinyInt = new class implements SqlDataType {
+export const SqlSmallInt = new (class implements SqlDataType {
   toString() {
-    return 'tinyint';
+    return "smallint";
   }
-}
+})();
 
-export const SqlSmallInt = new class implements SqlDataType {
+export const SqlInt = new (class implements SqlDataType {
   toString() {
-    return 'smallint';
+    return "int";
   }
-}
+})();
 
-export const SqlBigInt = new class implements SqlDataType {
+export const SqlBigInt = new (class implements SqlDataType {
   toString() {
-    return 'bigint';
+    return "bigint";
   }
-}
+})();
+
+export const SqlFloat8 = new (class implements SqlDataType {
+  toString() {
+    return "float8";
+  }
+})();

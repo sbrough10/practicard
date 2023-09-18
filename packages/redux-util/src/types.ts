@@ -1,3 +1,5 @@
+import { ThunkDispatch } from "redux-thunk";
+
 export interface Action<Data> {
   type: string;
   data: Data;
@@ -31,3 +33,5 @@ export interface WithBatchMap<Item extends ItemTemplate, Query> {
   byId: { [id: string | number]: Item };
   batchMap: { [batchHash: string]: Batch<Item, Query> };
 }
+
+export type Dispatch<State> = ThunkDispatch<State, undefined, Action<any>>;

@@ -1,13 +1,13 @@
-import _ from 'lodash';
-import { CaseStatement } from './case';
-import { CaseResult, TableField } from './utils';
+import _ from "lodash";
+import { CaseStatement } from "./case";
+import { TableField } from "./utils";
 
 enum Direction {
-  Asc = 'ASC',
-  Desc = 'DESC'
+  Asc = "ASC",
+  Desc = "DESC",
 }
 
-export type SortExpression = CaseStatement<CaseResult> | TableField;
+export type SortExpression = CaseStatement | TableField;
 
 export abstract class SortCalculation {
   abstract toString(): string;

@@ -1,9 +1,10 @@
 import {
+  CreateFlashcardListAndTagList,
   FlashcardData,
   FlashcardFilterData,
   FlashcardTagData,
-} from "../../utilities/types";
-import { ActionType } from "redux-util";
+} from "practicard-shared";
+import { ActionType, AsyncActionType } from "redux-util";
 import { FullState } from "./index.types";
 import { WithBatchMap } from "redux-util/lib/types";
 
@@ -33,33 +34,59 @@ export interface ChangeTagForFlashcardListActionData {
 }
 
 export const types = {
-  loadFlashcard: new ActionType<FullState, FlashcardData>("flashcard.load"),
-  loadFlashcardList: new ActionType<FullState, LoadFlashcardListActionData>(
-    "flashcard.bulkLoad"
-  ),
-  createFlashcardList: new ActionType<FullState, FlashcardData[]>(
-    "flashcard.bulkCreate"
-  ),
+  loadFlashcard: new AsyncActionType<
+    FullState,
+    FlashcardData["id"],
+    FlashcardData,
+    FlashcardData["id"]
+  >("flashcard.load"),
+  loadFlashcardList: new AsyncActionType<
+    FullState,
+    FlashcardQuery,
+    LoadFlashcardListActionData,
+    FlashcardQuery
+  >("flashcard.bulkLoad"),
+  createFlashcardListFromNewTagMap: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardTagData[],
+    unknown
+  >("flashcard.bulkCreateWithBulkTagCreate"),
+  createFlashcardList: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardData[],
+    unknown
+  >("flashcard.bulkCreate"),
   removeFlashcardListFromRecentlyCreated: new ActionType<
     FullState,
     FlashcardData["id"][]
   >("flashcard.recentlyCreated.remove"),
-  updateFlashcard: new ActionType<FullState, UpdateFlashcardActionData>(
-    "flashcard.update"
-  ),
-  markFlashcardListForDeletion: new ActionType<
+  updateFlashcard: new AsyncActionType<
     FullState,
-    FlashcardData["id"][]
+    null,
+    UpdateFlashcardActionData,
+    unknown
+  >("flashcard.update"),
+  markFlashcardListForDeletion: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardData["id"][],
+    unknown
   >("flashcard.bulkDelete.mark"),
   finalizeFlashcardListDeletion: new ActionType<FullState, void>(
     "flashcard.bulkDelete.finalize"
   ),
-  addTagToFlashcardList: new ActionType<
+  addTagToFlashcardList: new AsyncActionType<
     FullState,
-    ChangeTagForFlashcardListActionData
+    null,
+    ChangeTagForFlashcardListActionData,
+    unknown
   >("flashcard.tag.bulkAdd"),
-  removeTagFromFlashcardList: new ActionType<
+  removeTagFromFlashcardList: new AsyncActionType<
     FullState,
-    ChangeTagForFlashcardListActionData
+    null,
+    ChangeTagForFlashcardListActionData,
+    unknown
   >("flashcard.tag.bulkRemove"),
 };

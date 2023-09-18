@@ -1,7 +1,7 @@
 import { Slider } from "@mui/material";
 import { HitIconLabel } from "app/components/HitIconLabel";
 import { TextField } from "app/components/TextField";
-import { FlashcardFilterData } from "app/utilities/types";
+import { FlashcardFilterData } from "practicard-shared";
 import { produce } from "immer";
 import React, { useEffect, useState } from "react";
 import { classes } from "./styles";

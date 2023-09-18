@@ -1,26 +1,26 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   useAddTagToFlashcardList,
-  useCreateFlaschard,
+  useCreateFlashcard,
   useCreateFlashcardDeck,
   useDeleteFlashcardList,
-  useFlaschardList,
+  useEndSession,
+  useFlashcardBatch,
   useRemoveTagFromFlashcardList,
-} from "../../state";
-import { FlashcardDataRow } from "../../components/FlashcardDataRow";
+} from "app/state";
+import { FlashcardDataRow } from "app/components/FlashcardDataRow";
 import { classes } from "./styles";
-import { FlashcardTagMenu } from "../../components/FlashcardTagMenu";
-import { FlashcardFilterData, FlashcardTagData } from "../../utilities/types";
-import { BulkAddFlashcardDataInput } from "../../components/BulkAddFlashcardDataInput";
-import { ConfirmationDialog } from "../../components/ConfirmationDialog";
-import { Button } from "../../components/Button";
-import { IconButton } from "../../components/IconButton";
-import { GearIcon } from "../../icons/GearIcon";
-import { PlayIcon } from "../../icons/PlayIcon";
-import { PlusIcon } from "../../icons/PlusIcon";
-import { HitIconLabel } from "../../components/HitIconLabel";
-import { MissIconLabel } from "../../components/MissIconLabel";
-import { FilterHeader } from "../../components/FilterHeader";
+import { FlashcardTagMenu } from "app/components/FlashcardTagMenu";
+import { FlashcardFilterData, FlashcardTagData } from "practicard-shared";
+import { BulkAddFlashcardDataInput } from "app/components/BulkAddFlashcardDataInput";
+import { ConfirmationDialog } from "app/components/ConfirmationDialog";
+import { Button } from "app/components/Button";
+import { IconButton } from "app/components/IconButton";
+import { PlayIcon } from "app/icons/PlayIcon";
+import { PlusIcon } from "app/icons/PlusIcon";
+import { HitIconLabel } from "app/components/HitIconLabel";
+import { MissIconLabel } from "app/components/MissIconLabel";
+import { FilterHeader } from "app/components/FilterHeader";
 import { Checkbox } from "app/components/Checkbox";
 import { ExportIcon } from "app/icons/ExportIcon";
 import { ExportedCards } from "app/components/ExportedCards";
@@ -30,20 +30,20 @@ export enum DisplayedDialog {
   None,
   AddTagMenu,
   RemoveTagMenu,
-  BulkAddFlaschard,
+  BulkAddFlashcard,
   ExportFlashcardList,
   DeleteFlashcardConfirmationDialog,
   Settings,
 }
 
-export interface FlaschardDeckBuilderViewProps {
+export interface FlashcardDeckBuilderViewProps {
   filter: FlashcardFilterData;
   onChangeFilter: (filter: FlashcardFilterData) => void;
   onStartPractice: () => void;
 }
 
-export const FlaschardDeckBuilderView: React.FC<
-  FlaschardDeckBuilderViewProps
+export const FlashcardDeckBuilderView: React.FC<
+  FlashcardDeckBuilderViewProps
 > = ({ filter, onChangeFilter, onStartPractice: startPractice }) => {
   const [selectedCardList, setSelectedCardList] = useState<Set<number>>(
     new Set()
@@ -51,7 +51,11 @@ export const FlaschardDeckBuilderView: React.FC<
   const [showDialog, setShowDialog] = useState(DisplayedDialog.None);
   const cardListContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const flashcardList = useFlaschardList({ filter });
+  const {
+    list: flashcardList,
+    isLoading,
+    isValid,
+  } = useFlashcardBatch({ filter }) ?? {};
 
   useEffect(() => {
     if (!flashcardList) {
@@ -66,7 +70,8 @@ export const FlaschardDeckBuilderView: React.FC<
   }, [flashcardList]);
 
   const createFlashcardDeck = useCreateFlashcardDeck();
-  const createFlashcard = useCreateFlaschard();
+  const createFlashcard = useCreateFlashcard();
+  const endSession = useEndSession();
   const deleteFlashcardList = useDeleteFlashcardList();
   const addTagToFlashcardList = useAddTagToFlashcardList();
   const removeTagFromFlashcardList = useRemoveTagFromFlashcardList();
@@ -100,12 +105,16 @@ export const FlaschardDeckBuilderView: React.FC<
   }, [createFlashcard, filter, onCardListExpanded]);
 
   const onBulkAddFlashcard = useCallback(() => {
-    setShowDialog(DisplayedDialog.BulkAddFlaschard);
+    setShowDialog(DisplayedDialog.BulkAddFlashcard);
   }, []);
 
   const onExportFlashcardList = useCallback(() => {
     setShowDialog(DisplayedDialog.ExportFlashcardList);
   }, []);
+
+  const onSignOut = useCallback(() => {
+    endSession();
+  }, [endSession]);
 
   const allCardsSelected = selectedCardList.size === flashcardList?.length;
 
@@ -159,12 +168,12 @@ export const FlaschardDeckBuilderView: React.FC<
     [selectedCardList, removeTagFromFlashcardList]
   );
 
-  const deleteSelectedFlaschardList = useCallback(() => {
+  const deleteSelectedFlashcardList = useCallback(() => {
     deleteFlashcardList(Array.from(selectedCardList));
   }, [selectedCardList, deleteFlashcardList]);
 
   const getCardList = () => {
-    if (!flashcardList) {
+    if (!flashcardList || isLoading || !isValid) {
       return (
         <div className={classes.emptyCardList}>
           <LoadingIndicator />
@@ -192,7 +201,7 @@ export const FlaschardDeckBuilderView: React.FC<
 
   const getDisplayedDialog = () => {
     switch (showDialog) {
-      case DisplayedDialog.BulkAddFlaschard:
+      case DisplayedDialog.BulkAddFlashcard:
         return (
           <BulkAddFlashcardDataInput
             onClose={closeDialog}
@@ -223,7 +232,7 @@ export const FlaschardDeckBuilderView: React.FC<
           <ConfirmationDialog
             text={`Are you sure you want to delete all selected flashcards (${selectedCardList.size})?`}
             onClose={closeDialog}
-            onConfirm={deleteSelectedFlaschardList}
+            onConfirm={deleteSelectedFlashcardList}
           />
         );
       default:
@@ -249,6 +258,9 @@ export const FlaschardDeckBuilderView: React.FC<
         </IconButton>
         <IconButton icon={<ExportIcon />} onClick={onExportFlashcardList}>
           Export
+        </IconButton>
+        <IconButton icon={<ExportIcon />} onClick={onSignOut}>
+          Sign out
         </IconButton>
       </div>
       <div className={classes.filterHeaderWrapper}>
