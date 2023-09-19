@@ -270,8 +270,8 @@ export const Database = {
 
     const filterCondition = and(
       or(
-        match(flaschcardTable.f`frontText`, `.*${text}.*`),
-        match(flaschcardTable.f`backText`, `.*${text}.*`)
+        match(flaschcardTable.f`frontText`, `.*${text.toLowerCase()}.*`),
+        match(flaschcardTable.f`backText`, `.*${text.toLowerCase()}.*`)
       ),
       ...(tagIdList.length > 0
         ? [
