@@ -8,6 +8,7 @@ export interface FlashcardDeckState {
   deckSize: number;
   practiceHistory: FlashcardData["id"][];
   maxHitPercentage: number;
+  isPickingNextCard: boolean;
 }
 
 export interface CreateFlashcardDeckActionData {

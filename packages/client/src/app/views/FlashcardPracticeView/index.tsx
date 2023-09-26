@@ -3,6 +3,7 @@ import { FlashcardData } from "practicard-shared";
 import {
   useActiveDeckCardCount,
   useActiveFlashcard,
+  useIsPickingNextFlashcard,
   usePickNewFlashcard,
   useUpdateFlashcard,
 } from "../../state";
@@ -23,6 +24,7 @@ import { MenuItem } from "app/components/MenuItems";
 import { PenIcon } from "app/icons/PenIcon";
 import { NextIcon } from "app/icons/NextIcon";
 import { SingleFlashcardEditor } from "app/components/SingleFlashcardEditor";
+import { LoadingIndicator } from "app/components/LoadingIndicator";
 
 export interface FlashcardPracticeViewProps {
   onExit: () => void;
@@ -39,6 +41,7 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
   const pickFlashcard = usePickNewFlashcard();
   const currentFlashcard = useActiveFlashcard(0);
   const cardCount = useActiveDeckCardCount();
+  const isPickingNextCard = useIsPickingNextFlashcard();
 
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
@@ -126,13 +129,19 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
         />
       ) : null}
       <div className={classes.cardText}>
-        {currentFlashcard
-          ? isCardFlipped
-            ? currentFlashcard.backText
-            : currentFlashcard.frontText
-          : "There are no more flashcards active in this deck"}
+        {isPickingNextCard ? (
+          <LoadingIndicator />
+        ) : currentFlashcard ? (
+          isCardFlipped ? (
+            currentFlashcard.backText
+          ) : (
+            currentFlashcard.frontText
+          )
+        ) : (
+          "There are no more flashcards active in this deck"
+        )}
       </div>
-      {currentFlashcard ? (
+      {!isPickingNextCard && currentFlashcard ? (
         <>
           <div className={classes.addedDetails}>
             <div>

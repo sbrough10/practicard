@@ -20,6 +20,7 @@ const InitialState: FlashcardDeckState = {
   deckSize: 0,
   maxHitPercentage: 0,
   practiceHistory: [],
+  isPickingNextCard: false,
 };
 
 const STORAGE_KEY = "flashcardDeckV1";
@@ -148,6 +149,9 @@ export const select = {
   getActiveDeckCardCount: (state: FullState): number => {
     return state.flashcardDeck.deckSize;
   },
+  getIsPickingNextFlashcard: (state: FullState) => {
+    return state.flashcardDeck.isPickingNextCard;
+  },
 };
 
 export const reducer = createSliceReducer(InitialState, [
@@ -163,12 +167,15 @@ export const reducer = createSliceReducer(InitialState, [
   }),
 
   types.pickFlashcard.createReducer({
+    pending: (state, id) => ({ ...state, isPickingNextCard: true }),
     success: (state, id) => {
       return {
         ...state,
         activeCardId: id,
         practiceHistory: [id, ...state.practiceHistory],
+        isPickingNextCard: false,
       };
     },
+    failure: (state, id) => ({ ...state, isPickingNextCard: false }),
   }),
 ]);

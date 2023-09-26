@@ -46,3 +46,7 @@ export const usePickNewFlashcard = () => {
 export const useActiveDeckCardCount = () => {
   return useSelector(select.getActiveDeckCardCount);
 };
+
+export const useIsPickingNextFlashcard = () => {
+  return useSelector(select.getIsPickingNextFlashcard);
+};
