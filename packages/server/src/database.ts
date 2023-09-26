@@ -11,6 +11,7 @@ import {
   Varchar,
   and,
   andEq,
+  asc,
   caseWhen,
   concat,
   eq,
@@ -247,7 +248,8 @@ export const Database = {
         and(
           ...(where ? [where] : []),
           and(eq(flaschcardTable.f`isDeleted`, false))
-        )
+        ),
+        asc(flaschcardTable.f`id`)
       )
     ).rows.map((row) => convertDbFlashcardData(row as DbJoinFlashcardData));
   },
