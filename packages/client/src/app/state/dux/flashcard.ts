@@ -286,6 +286,7 @@ export const action = {
               flashcardIdList,
             },
           });
+          await req.exec();
         }
         return { tagId, flashcardIdList };
       }
