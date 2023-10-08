@@ -5,10 +5,10 @@ export const ApiPath = {
   Workspace: API_PATH_PREFIX + "/workspace",
   Session: API_PATH_PREFIX + "/session",
   FlashcardById: API_PATH_PREFIX + "/flashcard/:flashcardId",
-  Flashcard: API_PATH_PREFIX + "/flashcard",
-  FlashcardWithNewTags: API_PATH_PREFIX + "/flashcard/withNewTags",
+  Flashcard: API_PATH_PREFIX + "/flashcards",
+  FlashcardWithNewTags: API_PATH_PREFIX + "/flashcards/withNewTags",
   FlashcardTag: API_PATH_PREFIX + "/flashcardTag",
-  FlashcardTagIdList: API_PATH_PREFIX + "/flashcard/tagList",
+  FlashcardTagIdList: API_PATH_PREFIX + "/flashcards/tagList",
   FlashcardDeck: API_PATH_PREFIX + "/flashcardDeck",
   FlashcardDeckMaxHitPercentage:
     API_PATH_PREFIX + "/flashcardDeck/maxHitPercentage",

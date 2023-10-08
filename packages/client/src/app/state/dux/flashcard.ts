@@ -311,6 +311,7 @@ export const action = {
               flashcardIdList,
             },
           });
+          await req.exec();
         }
         return { tagId, flashcardIdList };
       }
@@ -374,10 +375,6 @@ export const reducer = createSliceReducer(InitialState, [
         state.byId[card.id] = card;
       });
 
-      batchResolver(state, {}).forEach((batch) => {
-        batch.isValid = false;
-      });
-
       state.recentlyCreated.push(...flashcardList.map((card) => card.id));
 
       return state;
@@ -399,10 +396,6 @@ export const reducer = createSliceReducer(InitialState, [
   types.updateFlashcard.createReducer({
     success: (state, { id, data }) => {
       Object.assign(state.byId[id], data);
-
-      batchResolver(state, {}).forEach((batch) => {
-        batch.isValid = false;
-      });
 
       return state;
     },
