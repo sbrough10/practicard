@@ -5,5 +5,6 @@ export const { classes } = addStylesheet({
     display: "flex",
     flexDirection: "column",
     gap: "16px",
+    overflowY: "scroll",
   },
 });
