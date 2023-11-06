@@ -1,4 +1,4 @@
-import { app } from "./init";
+import { app, hasQueryParam } from "./init";
 import { ApiPath } from "practicard-shared";
 import { Database } from "../database";
 import { hasWorkspaceSession } from "./session";
@@ -10,18 +10,23 @@ app.get(ApiPath.FlashcardById, hasWorkspaceSession, async (req, res) => {
   res.send(await Database.getFlashcard(parseInt(flashcardId), userId));
 });
 
-app.get(ApiPath.Flashcard, hasWorkspaceSession, async (req, res) => {
-  const { userId, workspaceId } = req.cookies;
-  const { filter } = req.query;
+app.get(
+  ApiPath.Flashcard,
+  hasWorkspaceSession,
+  hasQueryParam("filter"),
+  async (req, res) => {
+    const { userId, workspaceId } = req.cookies;
+    const { filter } = req.query;
 
-  res.send(
-    await Database.getFlashcardList(
-      JSON.parse(String(filter)),
-      userId,
-      workspaceId
-    )
-  );
-});
+    res.send(
+      await Database.getFlashcardList(
+        JSON.parse(String(filter)),
+        userId,
+        workspaceId
+      )
+    );
+  }
+);
 
 app.post(ApiPath.Flashcard, hasWorkspaceSession, async (req, res) => {
   const { userId, workspaceId } = req.cookies;

@@ -33,6 +33,12 @@ export interface ChangeTagForFlashcardListActionData {
   flashcardIdList: FlashcardData["id"][];
 }
 
+export interface ChangeTagListOnFlashcardListActionData {
+  addedTagIdList: FlashcardTagData["id"][];
+  removedTagIdList: FlashcardTagData["id"][];
+  flashcardIdList: FlashcardData["id"][];
+}
+
 export const types = {
   loadFlashcard: new AsyncActionType<
     FullState,
@@ -89,4 +95,10 @@ export const types = {
     ChangeTagForFlashcardListActionData,
     unknown
   >("flashcard.tag.bulkRemove"),
+  changeTagListOnFlashcardList: new AsyncActionType<
+    FullState,
+    null,
+    ChangeTagListOnFlashcardListActionData,
+    unknown
+  >("flashcard.tag.bulkChange"),
 };

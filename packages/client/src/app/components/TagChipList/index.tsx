@@ -62,11 +62,7 @@ export const TagChipList: React.FC<TagChipListProps> = ({
             icon={<PlusIcon size={22} fillColor="black" />}
           ></IconButton>
           {showTagMenu && (
-            <FlashcardTagMenu
-              isAdding={true}
-              onSelectTag={addTag}
-              onClose={closeTagMenu}
-            />
+            <FlashcardTagMenu onSelectTag={addTag} onClose={closeTagMenu} />
           )}
         </>
       )}

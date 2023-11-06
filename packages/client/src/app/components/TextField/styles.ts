@@ -2,12 +2,12 @@ import { addStylesheet } from "../../utilities/styles";
 
 export const { classes } = addStylesheet({
   root: {
-    flex: "1",
     padding: "4px",
     border: "solid 1px lightgrey",
     display: "flex",
     gap: "4px",
     alignItems: "center",
+    background: "white",
   },
   input: {
     flex: "1",

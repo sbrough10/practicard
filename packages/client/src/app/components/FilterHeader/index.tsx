@@ -1,13 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { TextField } from "../TextField";
-import { LensIcon } from "../../icons/LensIcon";
 import { classes } from "./styles";
 import { FlashcardFilterData } from "practicard-shared";
 import { FlashcardFilterSettings } from "./FlashcardFilterSettings";
 import { SliderIcon } from "../../icons/SliderIcon";
 import { IconButton } from "../IconButton";
-import { ExIcon } from "../../icons/ExIcon";
 import { ACTIVE_COLOR } from "../../utilities/styles";
+import { TextFilterField } from "../TextFilterField";
 
 export interface FilterHeaderProps {
   filter: FlashcardFilterData;
@@ -21,10 +19,10 @@ export const FilterHeader: React.FC<FilterHeaderProps> = ({
   const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const onUpdateText = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (text: string) => {
       onUpdate({
         ...filter,
-        include: { ...filter.include, text: event.target.value },
+        include: { ...filter.include, text },
       });
     },
     [filter, onUpdate]
@@ -38,13 +36,6 @@ export const FilterHeader: React.FC<FilterHeaderProps> = ({
     setShowMoreOptions(false);
   }, []);
 
-  const onClearSearchText = useCallback(() => {
-    onUpdate({
-      ...filter,
-      include: { ...filter.include, text: "" },
-    });
-  }, [onUpdate, filter]);
-
   const hasNonDefaultSettings = () => {
     if (filter.include.tagIdList.length > 0) {
       return true;
@@ -54,21 +45,13 @@ export const FilterHeader: React.FC<FilterHeaderProps> = ({
 
   return (
     <>
-      <TextField
-        placeholder="Filter cards by text"
-        leftPadContent={<LensIcon size={22} />}
-        onChange={onUpdateText}
-        value={filter.include.text}
-        rightPadContent={
-          filter.include.text ? (
-            <IconButton
-              className={classes.clearTextButton}
-              icon={<ExIcon size={16} />}
-              onClick={onClearSearchText}
-            />
-          ) : null
-        }
-      />
+      <div className={classes.textFilterWrapper}>
+        <TextFilterField
+          placeholder="Filter cards by text"
+          onChange={onUpdateText}
+          value={filter.include.text}
+        />
+      </div>
       <IconButton
         className={classes.moreButton}
         icon={

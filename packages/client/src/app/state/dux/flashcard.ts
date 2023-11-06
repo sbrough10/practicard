@@ -31,6 +31,7 @@ import {
 } from "../../utilities/local-storage";
 import { createTagList } from "./flashcard-tag";
 import { select as allSelect } from "..";
+import { runStandardFailure } from "./shared";
 
 const InitialState: FlashcardState = {
   byId: {},
@@ -158,7 +159,11 @@ export const action = {
         const req = new GetRequest(ApiPath.Flashcard, { params: query });
         return { list: await req.exec(), query };
       },
-      () => query
+      (error) => {
+        throw Error("break");
+        runStandardFailure(error);
+        return query;
+      }
     ),
 
   createFlashcardListWithNewTagMap: (
@@ -316,6 +321,32 @@ export const action = {
         return { tagId, flashcardIdList };
       }
     ),
+
+  changeTagListOnFlashcardList: (
+    addedTagIdList: FlashcardTagData["id"][],
+    removedTagIdList: FlashcardTagData["id"][],
+    flashcardIdList: FlashcardData["id"][]
+  ) =>
+    types.changeTagListOnFlashcardList.createAction(
+      null,
+      async (dispatch, getState) => {
+        if (allSelect.isLoadingSession(getState())) {
+          // TODO - Create local version
+          alert("This will not work for local workspaces");
+        } else {
+          const req = new PutRequest(ApiPath.FlashcardTagIdList, {
+            body: {
+              addedTagIdList,
+              removedTagIdList,
+              flashcardIdList,
+            },
+          });
+          await req.exec();
+        }
+
+        return { addedTagIdList, removedTagIdList, flashcardIdList };
+      }
+    ),
 };
 
 export const select = {
@@ -375,6 +406,10 @@ export const reducer = createSliceReducer(InitialState, [
         state.byId[card.id] = card;
       });
 
+      batchResolver(state, {}).forEach((batch) => {
+        batch.isValid = false;
+      });
+
       state.recentlyCreated.push(...flashcardList.map((card) => card.id));
 
       return state;
@@ -427,6 +462,15 @@ export const reducer = createSliceReducer(InitialState, [
 
   types.removeTagFromFlashcardList.createReducer({
     success: (state, { tagId, flashcardIdList }) => {
+      getBatchListByIdList(state, flashcardIdList).forEach((batch) => {
+        batch.isValid = false;
+      });
+      return state;
+    },
+  }),
+
+  types.changeTagListOnFlashcardList.createReducer({
+    success: (state, { flashcardIdList }) => {
       getBatchListByIdList(state, flashcardIdList).forEach((batch) => {
         batch.isValid = false;
       });

@@ -19,6 +19,7 @@ export const HIT_ICON_COLOR = "#80BF80";
 export const MISS_ICON_COLOR = "#FF8080";
 export const DEFAULT_ICON_COLOR = "#BFBFBF";
 export const ACTIVE_COLOR = "#EECC00";
+export const DRAWER_BACKGROND = "#262626";
 
 export const addStylesheet = <N extends string>(
   styles: Styles<N> | ((theme: Theme) => Styles<N>)

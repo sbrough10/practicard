@@ -203,10 +203,7 @@ export const FlashcardDataRow: React.FC<FlashcardDataRowProps> = ({
           </div>
         </div>
         <div className={classes.row}>
-          <TagChipList
-            tagIdList={data.tagIdList}
-            onEditList={onChangeSelect ? undefined : editTagList}
-          />
+          <TagChipList tagIdList={data.tagIdList} onEditList={editTagList} />
         </div>
       </div>
     </div>

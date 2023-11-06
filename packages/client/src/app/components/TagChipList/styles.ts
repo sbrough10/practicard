@@ -21,7 +21,7 @@ export const { classes } = addStylesheet({
     flexWrap: "wrap",
     justifyContent: "flex-start",
     alignItems: "center",
-    gap: "2px",
+    gap: "8px",
   },
   leftChipAligned: {
     justifyContent: "flex-start",

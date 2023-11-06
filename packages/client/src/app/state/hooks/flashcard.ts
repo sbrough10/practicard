@@ -110,3 +110,24 @@ export const useRemoveTagFromFlashcardList = () => {
     [dispatch]
   );
 };
+
+export const useChangeTagListOnFlashcardList = () => {
+  const dispatch = useDispatch();
+
+  return useCallback(
+    (
+      addedTagIdList: FlashcardTagData["id"][],
+      removedTagIdList: FlashcardTagData["id"][],
+      flashcardIdList: FlashcardData["id"][]
+    ) => {
+      dispatch(
+        action.changeTagListOnFlashcardList(
+          addedTagIdList,
+          removedTagIdList,
+          flashcardIdList
+        )
+      );
+    },
+    [dispatch]
+  );
+};

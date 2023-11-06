@@ -25,11 +25,14 @@ import { Checkbox } from "app/components/Checkbox";
 import { ExportIcon } from "app/icons/ExportIcon";
 import { ExportedCards } from "app/components/ExportedCards";
 import { LoadingIndicator } from "app/components/LoadingIndicator";
+import { MenuIcon } from "app/icons/MenuIcon";
+import { FlashcardTagSelectionMenu } from "app/components/FlashcardTagSelectionMenu";
+import { Menu } from "app/components/Menu";
+import { MenuItem } from "app/components/MenuItems";
 
 export enum DisplayedDialog {
   None,
-  AddTagMenu,
-  RemoveTagMenu,
+  ChangeTagMenu,
   BulkAddFlashcard,
   ExportFlashcardList,
   DeleteFlashcardConfirmationDialog,
@@ -49,7 +52,9 @@ export const FlashcardDeckBuilderView: React.FC<
     new Set()
   );
   const [showDialog, setShowDialog] = useState(DisplayedDialog.None);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const cardListContainerRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLElement | null>(null);
 
   const {
     list: flashcardList,
@@ -99,6 +104,17 @@ export const FlashcardDeckBuilderView: React.FC<
     startPractice();
   }, [createFlashcardDeck, filter, startPractice]);
 
+  const onClickMenuButton: React.MouseEventHandler<HTMLButtonElement> =
+    useCallback(
+      (event) => {
+        menuButtonRef.current = event.currentTarget;
+        setShowOptionsMenu(true);
+      },
+      [menuButtonRef]
+    );
+
+  const onCloseOptionMenu = useCallback(() => setShowOptionsMenu(false), []);
+
   const onAddFlashcard = useCallback(() => {
     createFlashcard({ tagIdList: filter.include.tagIdList });
     onCardListExpanded();
@@ -131,12 +147,8 @@ export const FlashcardDeckBuilderView: React.FC<
     [allCardsSelected, flashcardList]
   );
 
-  const onAddTag = useCallback(() => {
-    setShowDialog(DisplayedDialog.AddTagMenu);
-  }, []);
-
-  const onRemoveTag = useCallback(() => {
-    setShowDialog(DisplayedDialog.RemoveTagMenu);
+  const onChangeTags = useCallback(() => {
+    setShowDialog(DisplayedDialog.ChangeTagMenu);
   }, []);
 
   const onDeleteFlashcardList = useCallback(() => {
@@ -211,20 +223,14 @@ export const FlashcardDeckBuilderView: React.FC<
         );
       case DisplayedDialog.ExportFlashcardList:
         return <ExportedCards onClose={closeDialog} filter={filter} />;
-      case DisplayedDialog.AddTagMenu:
+      case DisplayedDialog.ChangeTagMenu:
         return (
-          <FlashcardTagMenu
+          <FlashcardTagSelectionMenu
             onClose={closeDialog}
-            onSelectTag={applyTagToSelectedFlashcardList}
-            isAdding={true}
-          />
-        );
-      case DisplayedDialog.RemoveTagMenu:
-        return (
-          <FlashcardTagMenu
-            onClose={closeDialog}
-            onSelectTag={removeTagFromSelectedFlashcardList}
-            isAdding={false}
+            flashcardList={
+              flashcardList?.filter((card) => selectedCardList.has(card.id)) ??
+              []
+            }
           />
         );
       case DisplayedDialog.DeleteFlashcardConfirmationDialog:
@@ -250,18 +256,31 @@ export const FlashcardDeckBuilderView: React.FC<
         >
           Start
         </IconButton>
-        <IconButton icon={<PlusIcon />} onClick={onAddFlashcard}>
-          Add card
+        <IconButton icon={<MenuIcon />} onClick={onClickMenuButton}>
+          More
         </IconButton>
-        <IconButton icon={<PlusIcon />} onClick={onBulkAddFlashcard}>
-          Bulk add
-        </IconButton>
-        <IconButton icon={<ExportIcon />} onClick={onExportFlashcardList}>
-          Export
-        </IconButton>
-        <IconButton icon={<ExportIcon />} onClick={onSignOut}>
-          Sign out
-        </IconButton>
+        <Menu
+          open={showOptionsMenu}
+          onClose={onCloseOptionMenu}
+          anchorEl={menuButtonRef.current}
+        >
+          <MenuItem onClick={onAddFlashcard}>
+            <PlusIcon />
+            Add card
+          </MenuItem>
+          <MenuItem onClick={onBulkAddFlashcard}>
+            <PlusIcon />
+            Bulk add
+          </MenuItem>
+          <MenuItem onClick={onExportFlashcardList}>
+            <ExportIcon />
+            Export
+          </MenuItem>
+          <MenuItem onClick={onSignOut}>
+            <ExportIcon />
+            Sign out
+          </MenuItem>
+        </Menu>
       </div>
       <div className={classes.filterHeaderWrapper}>
         {flashcardList && flashcardList.length > 0 ? (
@@ -303,8 +322,7 @@ export const FlashcardDeckBuilderView: React.FC<
         <>
           <div className={classes.footer}>
             <div>Selected ({selectedCardList.size})</div>
-            <Button onClick={onAddTag}>Add tag</Button>
-            <Button onClick={onRemoveTag}>Remove tag</Button>
+            <Button onClick={onChangeTags}>Change tags</Button>
             <Button onClick={onDeleteFlashcardList}>Delete</Button>
           </div>
         </>

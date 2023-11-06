@@ -2,32 +2,24 @@ import React, { useCallback, useRef, useState } from "react";
 import { classes } from "./styles";
 import { FlashcardTagData } from "practicard-shared";
 import { useCreateFlashcardTag, useFlashcardTagMap } from "../../state";
-import { TagChip } from "../TagChip";
-import { BasePopupView } from "../BasePopupView";
-import { TextField } from "../TextField";
-import { IconButton } from "../IconButton";
-import { CheckIcon } from "../../icons/CheckIcon";
-import { ExIcon } from "../../icons/ExIcon";
+import { TagChip } from "app/components/TagChip";
+import { BasePopupView } from "app/components/BasePopupView";
+import { FlashcardTagMenuHeader } from "app/components/FlashcardTagMenuHeader";
 
 export interface FlashcardTagMenuProps {
   onClose: () => void;
   onSelectTag: (tagId: FlashcardTagData["id"]) => void;
-  isAdding: boolean;
 }
 
 export const FlashcardTagMenu: React.FC<FlashcardTagMenuProps> = ({
   onClose,
   onSelectTag,
-  isAdding,
 }) => {
   const tagMap = useFlashcardTagMap();
-  const createTag = useCreateFlashcardTag();
-  const [showNewTagInput, setShowNewTagInput] = useState(false);
-  const createTagInputRef = useRef<HTMLInputElement>(null);
-  const createTagInput = createTagInputRef.current;
+  const [filterText, setFilterText] = useState("");
 
-  const onCreateTag = useCallback(() => {
-    setShowNewTagInput(true);
+  const onChangeSearchText = useCallback((text: string) => {
+    setFilterText(text);
   }, []);
 
   const onClickTag = useCallback(
@@ -38,44 +30,21 @@ export const FlashcardTagMenu: React.FC<FlashcardTagMenuProps> = ({
     [onSelectTag, onClose]
   );
 
-  const createNewTag = useCallback(() => {
-    if (createTagInputRef.current) {
-      createTag(createTagInputRef.current.value);
-      setShowNewTagInput(false);
-    }
-  }, [createTagInput]);
-
-  const cancelNewTagCreation = useCallback(() => {
-    setShowNewTagInput(false);
-  }, []);
-
   if (!tagMap) {
     return null;
   }
 
-  const addingInput = showNewTagInput ? (
-    <div className={classes.createTagSection}>
-      <TextField ref={createTagInputRef} />
-      <IconButton
-        className={classes.button}
-        icon={<CheckIcon size={22} fillColor="white" />}
-        onClick={createNewTag}
-      />
-      <IconButton
-        className={classes.button}
-        icon={<ExIcon size={22} fillColor="white" />}
-        onClick={cancelNewTagCreation}
-      />
-    </div>
-  ) : (
-    <button onClick={onCreateTag}>Create new tag</button>
-  );
-
   return (
     <BasePopupView title="Select a tag" onClose={onClose}>
-      <div className={classes.root}>
-        {isAdding ? addingInput : null}
+      <div>
+        <FlashcardTagMenuHeader onChangeSearchText={onChangeSearchText} />
+      </div>
+      <div className={classes.tagList}>
         {Object.values(tagMap)
+          .filter(
+            (tag) =>
+              tag.label.toLowerCase().indexOf(filterText.toLowerCase()) !== -1
+          )
           .map((tag) => (
             <TagChip onClick={onClickTag} id={tag.id} label={tag.label} />
           ))

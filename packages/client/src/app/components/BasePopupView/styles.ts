@@ -9,7 +9,7 @@ export const { classes } = addStylesheet({
       background: "lightgrey",
       display: "flex",
       flexDirection: "column",
-      gap: "8px",
+      gap: "24px",
       padding: "12px",
     },
   },
