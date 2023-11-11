@@ -20,10 +20,12 @@ const httpRequest = (
   const { params, body } = options;
   const queryParams = new URLSearchParams();
   let resolvedPath = path;
+  let queryStringExists = false;
   for (let param in params) {
     if (resolvedPath.indexOf(`:${param}`) !== -1) {
       resolvedPath = resolvedPath.replace(`:${param}`, `${params[param]}`);
     } else {
+      queryStringExists = true;
       queryParams.append(
         param,
         isString(params[param]) ? params[param] : JSON.stringify(params[param])
@@ -31,7 +33,7 @@ const httpRequest = (
     }
   }
   const url =
-    resolvedPath + (queryParams.size > 0 ? `?${queryParams.toString()}` : "");
+    resolvedPath + (queryStringExists ? `?${queryParams.toString()}` : "");
   return fetch(
     url,
     method === RequestMethod.Get
