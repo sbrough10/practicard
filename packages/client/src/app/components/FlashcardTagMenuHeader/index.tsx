@@ -32,14 +32,11 @@ export const FlashcardTagMenuHeader: React.FC<FlashcardTagMenuHeaderProps> = ({
     () => setShowOption(DisplayOption.Search),
     []
   );
+
   const setDisplayCreate = useCallback(
     () => setShowOption(DisplayOption.Create),
     []
   );
-  const clearDisplayOption = useCallback(() => {
-    setShowOption(DisplayOption.None);
-    changeTextFilter("");
-  }, []);
 
   const changeTextFilter = useCallback(
     (text: string) => {
@@ -48,6 +45,11 @@ export const FlashcardTagMenuHeader: React.FC<FlashcardTagMenuHeaderProps> = ({
     },
     [onChangeSearchText]
   );
+
+  const clearDisplayOption = useCallback(() => {
+    setShowOption(DisplayOption.None);
+    changeTextFilter("");
+  }, [changeTextFilter]);
 
   const createNewTag = useCallback(() => {
     if (createTagInputRef.current) {

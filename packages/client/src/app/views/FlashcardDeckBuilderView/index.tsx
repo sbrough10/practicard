@@ -1,17 +1,22 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  useAddTagToFlashcardList,
+  useChangeTagListOnFlashcardList,
   useCreateFlashcard,
   useCreateFlashcardDeck,
   useDeleteFlashcardList,
   useEndSession,
   useFlashcardBatch,
-  useRemoveTagFromFlashcardList,
+  useFlashcardTagMap,
 } from "app/state";
 import { FlashcardDataRow } from "app/components/FlashcardDataRow";
 import { classes } from "./styles";
-import { FlashcardTagMenu } from "app/components/FlashcardTagMenu";
-import { FlashcardFilterData, FlashcardTagData } from "practicard-shared";
+import { FlashcardFilterData } from "practicard-shared";
 import { BulkAddFlashcardDataInput } from "app/components/BulkAddFlashcardDataInput";
 import { ConfirmationDialog } from "app/components/ConfirmationDialog";
 import { Button } from "app/components/Button";
@@ -26,9 +31,13 @@ import { ExportIcon } from "app/icons/ExportIcon";
 import { ExportedCards } from "app/components/ExportedCards";
 import { LoadingIndicator } from "app/components/LoadingIndicator";
 import { MenuIcon } from "app/icons/MenuIcon";
-import { FlashcardTagSelectionMenu } from "app/components/FlashcardTagSelectionMenu";
+import {
+  FlashcardTagSelectionMenu,
+  FlashcardTagSelectionMenuProps,
+} from "app/components/FlashcardTagSelectionMenu";
 import { Menu } from "app/components/Menu";
 import { MenuItem } from "app/components/MenuItems";
+import { getTagSelectionStatus } from "app/components/FlashcardTagSelectionMenu/utils";
 
 export enum DisplayedDialog {
   None,
@@ -55,12 +64,19 @@ export const FlashcardDeckBuilderView: React.FC<
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const cardListContainerRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLElement | null>(null);
-
   const {
     list: flashcardList,
     isLoading,
     isValid,
   } = useFlashcardBatch({ filter }) ?? {};
+
+  const tagSelectionStatus = useMemo(
+    () =>
+      getTagSelectionStatus(
+        flashcardList?.filter((card) => selectedCardList.has(card.id)) ?? []
+      ),
+    [flashcardList, selectedCardList]
+  );
 
   useEffect(() => {
     if (!flashcardList) {
@@ -77,9 +93,8 @@ export const FlashcardDeckBuilderView: React.FC<
   const createFlashcardDeck = useCreateFlashcardDeck();
   const createFlashcard = useCreateFlashcard();
   const endSession = useEndSession();
+  const changeTagListOnFlashcardList = useChangeTagListOnFlashcardList();
   const deleteFlashcardList = useDeleteFlashcardList();
-  const addTagToFlashcardList = useAddTagToFlashcardList();
-  const removeTagFromFlashcardList = useRemoveTagFromFlashcardList();
 
   const onCardListExpanded = useCallback(() => {
     const cardListContainer = cardListContainerRef.current;
@@ -166,18 +181,17 @@ export const FlashcardDeckBuilderView: React.FC<
     [onChangeFilter]
   );
 
-  const applyTagToSelectedFlashcardList = useCallback(
-    (tagId: FlashcardTagData["id"]) => {
-      addTagToFlashcardList(tagId, Array.from(selectedCardList));
+  const applyTagChangesToSelection = useCallback<
+    FlashcardTagSelectionMenuProps["onApplyChanges"]
+  >(
+    (addedTagIdsList, removedTagIdList) => {
+      changeTagListOnFlashcardList(
+        addedTagIdsList,
+        removedTagIdList,
+        Array.from(selectedCardList)
+      );
     },
-    [selectedCardList, addTagToFlashcardList]
-  );
-
-  const removeTagFromSelectedFlashcardList = useCallback(
-    (tagId: FlashcardTagData["id"]) => {
-      removeTagFromFlashcardList(tagId, Array.from(selectedCardList));
-    },
-    [selectedCardList, removeTagFromFlashcardList]
+    [changeTagListOnFlashcardList, selectedCardList]
   );
 
   const deleteSelectedFlashcardList = useCallback(() => {
@@ -226,11 +240,9 @@ export const FlashcardDeckBuilderView: React.FC<
       case DisplayedDialog.ChangeTagMenu:
         return (
           <FlashcardTagSelectionMenu
+            onApplyChanges={applyTagChangesToSelection}
             onClose={closeDialog}
-            flashcardList={
-              flashcardList?.filter((card) => selectedCardList.has(card.id)) ??
-              []
-            }
+            {...tagSelectionStatus}
           />
         );
       case DisplayedDialog.DeleteFlashcardConfirmationDialog:

@@ -29,6 +29,7 @@ import {
   FlashcardData,
   FlashcardFilterData,
   FlashcardTagData,
+  FlashcardTagUpdateData,
   FlashcardUpdateData,
   UserData,
   WorkspaceData,
@@ -41,7 +42,7 @@ const pgDb = new PostgressDatabase(
     `postgres://postgres:postgres@localhost:5432/practicard`
 );
 
-const flaschcardTable = pgDb.createTable(
+const flashcardTable = pgDb.createTable(
   "Flashcard",
   {
     frontText: new Varchar(256),
@@ -234,22 +235,22 @@ export const Database = {
     where?: Condition
   ): Promise<FlashcardData[]> {
     return (
-      await flaschcardTable.select(
+      await flashcardTable.select(
         [
-          ...flaschcardTable.fl("frontText", "backText", "id", "tagIdList"),
+          ...flashcardTable.fl("frontText", "backText", "id", "tagIdList"),
           ...flashcardSuccessTable.fl("hits", "misses"),
         ],
         flashcardSuccessTable.innerJoin(
           and(
             eq(flashcardSuccessTable.f`userId`, userId),
-            eq(flaschcardTable.f`id`, flashcardSuccessTable.f`flashcardId`)
+            eq(flashcardTable.f`id`, flashcardSuccessTable.f`flashcardId`)
           )
         ),
         and(
           ...(where ? [where] : []),
-          and(eq(flaschcardTable.f`isDeleted`, false))
+          and(eq(flashcardTable.f`isDeleted`, false))
         ),
-        asc(flaschcardTable.f`id`)
+        asc(flashcardTable.f`id`)
       )
     ).rows.map((row) => convertDbFlashcardData(row as DbJoinFlashcardData));
   },
@@ -257,7 +258,7 @@ export const Database = {
   async getFlashcard(id: FlashcardData["id"], userId: UserData["id"]) {
     const result = await this.selectFlashcard(
       userId,
-      eq(flaschcardTable.f`id`, id)
+      eq(flashcardTable.f`id`, id)
     );
 
     return result[0];
@@ -272,14 +273,14 @@ export const Database = {
 
     const filterCondition = and(
       or(
-        match(flaschcardTable.f`frontText`, `.*${text}.*`, false),
-        match(flaschcardTable.f`backText`, `.*${text}.*`, false)
+        match(flashcardTable.f`frontText`, `.*${text}.*`, false),
+        match(flashcardTable.f`backText`, `.*${text}.*`, false)
       ),
       ...(tagIdList.length > 0
         ? [
             or(
               ...tagIdList.map((tagId) =>
-                hasNumInList(flaschcardTable.f`tagIdList`, tagId)
+                hasNumInList(flashcardTable.f`tagIdList`, tagId)
               )
             ),
           ]
@@ -289,7 +290,7 @@ export const Database = {
 
     const result = await this.selectFlashcard(
       userId,
-      and(filterCondition, eq(flaschcardTable.f`workspaceId`, workspaceId))
+      and(filterCondition, eq(flashcardTable.f`workspaceId`, workspaceId))
     );
 
     return result;
@@ -309,7 +310,7 @@ export const Database = {
       ...flashcardData
     } = data;
     const flashcardId = (
-      await flaschcardTable.insert(
+      await flashcardTable.insert(
         [
           {
             tagIdList: numListToString(tagIdList),
@@ -338,7 +339,7 @@ export const Database = {
     workspaceId: WorkspaceData["id"]
   ): Promise<FlashcardData[]> {
     const dbFlashcardList: DbFlashcardData[] = (
-      await flaschcardTable.insert(
+      await flashcardTable.insert(
         data.map(
           ({
             hits,
@@ -405,12 +406,12 @@ export const Database = {
     };
 
     if (Object.keys(updateValues).length > 0) {
-      await flaschcardTable.update(updateValues, eq(f`id`, id));
+      await flashcardTable.update(updateValues, eq(f`id`, id));
     }
   },
 
   async deleteFlashcard(idList: FlashcardData["id"][]) {
-    await flaschcardTable.update(
+    await flashcardTable.update(
       { isDeleted: true },
       or(...idList.map((id) => eq(f`id`, id)))
     );
@@ -425,13 +426,13 @@ export const Database = {
     workspaceId: WorkspaceData["id"]
   ) {
     const idList = (
-      await flaschcardTable.select(
-        [flaschcardTable.f`id`],
+      await flashcardTable.select(
+        [flashcardTable.f`id`],
         flashcardSuccessTable.leftJoin(
           and(
-            eq(flaschcardTable.f`id`, flashcardSuccessTable.f`flashcardId`),
+            eq(flashcardTable.f`id`, flashcardSuccessTable.f`flashcardId`),
             eq(flashcardSuccessTable.f`userId`, userId),
-            eq(flaschcardTable.f`workspaceId`, workspaceId)
+            eq(flashcardTable.f`workspaceId`, workspaceId)
           )
         ),
         isNull(flashcardSuccessTable.f`userId`)
@@ -457,7 +458,7 @@ export const Database = {
     flashcardIdList: FlashcardData["id"][]
   ) {
     for (const tagId of addedTagIdList) {
-      await flaschcardTable.update(
+      await flashcardTable.update(
         {
           tagIdList: caseWhen(
             [hasNumInList(f`tagIdList`, tagId).then(f`tagIdList`)],
@@ -469,7 +470,7 @@ export const Database = {
     }
 
     for (const tagId of removedTagIdList) {
-      await flaschcardTable.update(
+      await flashcardTable.update(
         {
           tagIdList: sansNumInList(f`tagIdList`, tagId),
         },
@@ -501,5 +502,26 @@ export const Database = {
     );
 
     return result.rows as FlashcardTagData[];
+  },
+
+  async updateFlashcardTag(
+    id: FlashcardTagData["id"],
+    data: FlashcardTagUpdateData
+  ) {
+    await flashcardTagTable.update(data, eq(f`id`, id));
+  },
+
+  async deleteFlashcardTag(
+    workspaceId: WorkspaceData["id"],
+    tagId: FlashcardTagData["id"]
+  ) {
+    await flashcardTagTable.delete(eq(f`id`, tagId));
+
+    await flashcardTable.update(
+      {
+        tagIdList: sansNumInList(f`tagIdList`, tagId),
+      },
+      eq(f`workspaceId`, workspaceId)
+    );
   },
 };

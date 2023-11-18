@@ -1,7 +1,7 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { classes } from "./styles";
 import { FlashcardTagData } from "practicard-shared";
-import { useCreateFlashcardTag, useFlashcardTagMap } from "../../state";
+import { useFlashcardTagMap } from "../../state";
 import { TagChip } from "app/components/TagChip";
 import { BasePopupView } from "app/components/BasePopupView";
 import { FlashcardTagMenuHeader } from "app/components/FlashcardTagMenuHeader";

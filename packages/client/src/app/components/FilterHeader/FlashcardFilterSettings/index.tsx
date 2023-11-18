@@ -49,7 +49,7 @@ export const FlashcardFilterSettings: React.FC<
         })
       );
     },
-    [onUpdate]
+    [onUpdate, filter]
   );
 
   return (

@@ -8,6 +8,7 @@ export const ApiPath = {
   Flashcard: API_PATH_PREFIX + "/flashcards",
   FlashcardWithNewTags: API_PATH_PREFIX + "/flashcards/withNewTags",
   FlashcardTag: API_PATH_PREFIX + "/flashcardTag",
+  FlashcardTagById: API_PATH_PREFIX + "/flashcardTag/:tagId",
   FlashcardTagIdList: API_PATH_PREFIX + "/flashcards/tagList",
   FlashcardDeck: API_PATH_PREFIX + "/flashcardDeck",
   FlashcardDeckMaxHitPercentage:
@@ -33,6 +34,9 @@ export interface FlashcardTagData {
 
 export type FlashcardCreationData = Omit<FlashcardData, "id">;
 export type FlashcardUpdateData = Partial<FlashcardCreationData>;
+
+export type FlashcardTagUpdateData = Partial<Omit<FlashcardTagData, "id">>;
+
 export type NewTagToFlashcardMap = {
   [tagLabel: string]: FlashcardCreationData[];
 };

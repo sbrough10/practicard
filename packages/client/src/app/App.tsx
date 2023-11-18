@@ -5,14 +5,16 @@ import {
   defaultFlashcardFilterData,
 } from "practicard-shared";
 import { FlashcardPracticeView } from "app/views/FlashcardPracticeView";
-import { useHasSession } from "app/state";
+import { useHasSession, useIsLoadingSession } from "app/state";
 import { WorkspaceSelectorView } from "./views/WorkspaceSelectorView";
+import { LoadingIndicatorOverlay } from "./components/LoadingIndicatorOverlay";
 
 export const App: React.FC = () => {
   const [isPracticing, setIsPracticing] = useState(false);
   const [filter, setFilter] = useState(defaultFlashcardFilterData);
 
   const hasSession = useHasSession();
+  const isLoadingSession = useIsLoadingSession();
 
   useEffect(() => {
     if (!hasSession) {
@@ -33,7 +35,12 @@ export const App: React.FC = () => {
   }, []);
 
   if (!hasSession) {
-    return <WorkspaceSelectorView />;
+    return (
+      <>
+        <WorkspaceSelectorView />
+        {isLoadingSession && <LoadingIndicatorOverlay />}
+      </>
+    );
   }
 
   if (isPracticing) {

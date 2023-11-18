@@ -1,17 +1,23 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { FlashcardTagData } from "practicard-shared";
 import { useFlashcardTagMap } from "app/state";
 import { TagChip } from "app/components/TagChip";
 import { classes } from "./styles";
 import { IconButton } from "app/components/IconButton";
-import { FlashcardTagMenu } from "app/components/FlashcardTagMenu";
 import { PlusIcon } from "app/icons/PlusIcon";
 import clsx from "clsx";
+import {
+  FlashcardTagSelectionMenu,
+  FlashcardTagSelectionMenuProps,
+} from "app/components/FlashcardTagSelectionMenu";
+import { PenIcon } from "app/icons/PenIcon";
 
 export enum ChipAlignment {
   Left,
   Center,
 }
+
+const EMPTY_SET = new Set<FlashcardTagData["id"]>();
 
 export interface TagChipListProps {
   tagIdList: FlashcardTagData["id"][];
@@ -31,22 +37,18 @@ export const TagChipList: React.FC<TagChipListProps> = ({
   const openTagMenu = useCallback(() => setShowTagMenu(true), []);
   const closeTagMenu = useCallback(() => setShowTagMenu(false), []);
 
-  const addTag = useCallback(
-    (tagId: FlashcardTagData["id"]) => {
-      onEditList?.([...tagIdList, tagId]);
-    },
-    [onEditList, tagIdList]
-  );
+  const changeTaglist: FlashcardTagSelectionMenuProps["onApplyChanges"] =
+    useCallback(
+      (addedTagIdsList, removedTagIdList) => {
+        const newTagIdList = [...tagIdList]
+          .filter((tagId) => removedTagIdList.indexOf(tagId) === -1)
+          .concat(addedTagIdsList);
+        onEditList?.(newTagIdList);
+      },
+      [tagIdList, onEditList]
+    );
 
-  const removeTag = useCallback(
-    (tagId: FlashcardTagData["id"]) => {
-      const newTagIdList = [...tagIdList];
-      const index = newTagIdList.indexOf(tagId);
-      newTagIdList.splice(index, 1);
-      onEditList?.(newTagIdList);
-    },
-    [tagIdList, onEditList]
-  );
+  const checkedTagSet = useMemo(() => new Set(tagIdList), [tagIdList]);
 
   if (!tagMap) {
     return null;
@@ -59,10 +61,15 @@ export const TagChipList: React.FC<TagChipListProps> = ({
           <IconButton
             onClick={openTagMenu}
             className={classes.addButton}
-            icon={<PlusIcon size={22} fillColor="black" />}
+            icon={<PenIcon size={22} fillColor="black" />}
           ></IconButton>
           {showTagMenu && (
-            <FlashcardTagMenu onSelectTag={addTag} onClose={closeTagMenu} />
+            <FlashcardTagSelectionMenu
+              onApplyChanges={changeTaglist}
+              onClose={closeTagMenu}
+              checkedTagSet={checkedTagSet}
+              indeterminateTagSet={EMPTY_SET}
+            />
           )}
         </>
       )}
@@ -75,11 +82,7 @@ export const TagChipList: React.FC<TagChipListProps> = ({
       >
         {tagIdList.length > 0 ? (
           tagIdList.map((tagId) => (
-            <TagChip
-              id={tagId}
-              label={tagMap[tagId].label}
-              onRemove={onEditList && removeTag}
-            />
+            <TagChip id={tagId} label={tagMap[tagId].label} />
           ))
         ) : (
           <button onClick={openTagMenu} className={classes.noTags}>

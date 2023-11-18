@@ -21,6 +21,10 @@ export const useStartLocalSession = () => {
   }, [dispatch]);
 };
 
+export const useIsLoadingSession = () => {
+  return useSelector(select.isLoadingSession);
+};
+
 export const useHasSession = () => {
   const dispatch = useDispatch();
 

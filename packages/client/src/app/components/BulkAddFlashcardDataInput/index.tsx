@@ -6,11 +6,7 @@ import {
 } from "app/state";
 import { BasePopupView } from "app/components/BasePopupView";
 import { Button } from "app/components/Button";
-import {
-  FlashcardCreationData,
-  FlashcardData,
-  FlashcardTagData,
-} from "practicard-shared";
+import { FlashcardCreationData, FlashcardTagData } from "practicard-shared";
 import { TagChipList } from "../TagChipList";
 
 function getNum(value: string | undefined, backup: number) {
@@ -95,6 +91,7 @@ export const BulkAddFlashcardDataInput: React.FC<
   }, [
     textInputRef,
     tagIdList,
+    tagMap,
     createFlashcardListWithNewTagMap,
     onClose,
     onBulkAddComplete,

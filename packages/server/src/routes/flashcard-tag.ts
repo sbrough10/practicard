@@ -1,5 +1,5 @@
 import { app } from "./init";
-import { ApiPath } from "practicard-shared";
+import { ApiPath, FlashcardTagUpdateData } from "practicard-shared";
 import { Database } from "../database";
 import { hasWorkspaceSession } from "./session";
 import { keyBy } from "lodash";
@@ -26,4 +26,23 @@ app.post(ApiPath.FlashcardTag, hasWorkspaceSession, async (req, res) => {
   }
 
   res.send([]);
+});
+
+app.put(ApiPath.FlashcardTagById, hasWorkspaceSession, async (req, res) => {
+  const { workspaceId } = req.cookies;
+  const tagId = parseInt(req.params.tagId);
+  const data: FlashcardTagUpdateData = req.body;
+
+  await Database.updateFlashcardTag(tagId, data);
+
+  res.send({});
+});
+
+app.delete(ApiPath.FlashcardTagById, hasWorkspaceSession, async (req, res) => {
+  const { workspaceId } = req.cookies;
+  const tagId = parseInt(req.params.tagId);
+
+  await Database.deleteFlashcardTag(workspaceId, tagId);
+
+  res.send({});
 });

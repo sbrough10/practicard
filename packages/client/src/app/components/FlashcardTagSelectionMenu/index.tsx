@@ -2,16 +2,20 @@ import { useCallback, useMemo, useState } from "react";
 import { BasePopupView } from "app/components/BasePopupView";
 import { TagChip } from "app/components/TagChip";
 import { classes } from "./styles";
-import { useChangeTagListOnFlashcardList, useFlashcardTagMap } from "app/state";
+import { useFlashcardTagMap } from "app/state";
 import { Checkbox } from "../Checkbox";
 import { Button } from "../Button";
-import { FlashcardData, FlashcardTagData } from "practicard-shared";
+import { FlashcardTagData } from "practicard-shared";
 import { FlashcardTagMenuHeader } from "../FlashcardTagMenuHeader";
+import { FlashcardTagListSelectionStatus } from "./utils";
 
-export interface FlashcardTagSelectionMenuProps {
+export interface FlashcardTagSelectionMenuProps
+  extends FlashcardTagListSelectionStatus {
+  onApplyChanges: (
+    addedTagIdsList: FlashcardTagData["id"][],
+    removedTagIdList: FlashcardTagData["id"][]
+  ) => void;
   onClose: () => void;
-  /** The list of flashcards with tag lists been affected */
-  flashcardList: FlashcardData[];
 }
 
 interface AugmentedTagData extends FlashcardTagData {
@@ -25,29 +29,32 @@ interface AugmentedTagData extends FlashcardTagData {
 
 export const FlashcardTagSelectionMenu: React.FC<
   FlashcardTagSelectionMenuProps
-> = ({ onClose, flashcardList }) => {
+> = ({
+  onApplyChanges,
+  onClose,
+  checkedTagSet,
+  indeterminateTagSet = new Set(),
+}) => {
   const [filterText, setFilterText] = useState("");
-  const [checkedTagSet, setCheckedTagSet] = useState(new Set<number>());
-  const [uncheckedTagSet, setUncheckedTagSet] = useState(new Set<number>());
+  const [newlyCheckedTagSet, setNewlyCheckedTagSet] = useState(
+    new Set<number>()
+  );
+  const [newlyUncheckedTagSet, setNewlyUncheckedTagSet] = useState(
+    new Set<number>()
+  );
 
   const tagMap = useFlashcardTagMap();
-  const changeTagListOnFlashcardList = useChangeTagListOnFlashcardList();
 
   const augTagList: AugmentedTagData[] | undefined = useMemo(() => {
     return (
       tagMap &&
       Object.values(tagMap).map((tag) => {
-        const checked = flashcardList.every(
-          (card) => card.tagIdList.indexOf(tag.id) !== -1
-        );
         return {
           ...tag,
-          checked,
-          indeterminate:
-            !checked &&
-            flashcardList.some((card) => card.tagIdList.indexOf(tag.id) !== -1),
+          checked: checkedTagSet.has(tag.id),
+          indeterminate: indeterminateTagSet.has(tag.id),
           onChangeChecked: (event, checked) => {
-            setCheckedTagSet((set) => {
+            setNewlyCheckedTagSet((set) => {
               const newSet = new Set(set);
               if (checked) {
                 newSet.add(tag.id);
@@ -56,7 +63,7 @@ export const FlashcardTagSelectionMenu: React.FC<
               }
               return newSet;
             });
-            setUncheckedTagSet((set) => {
+            setNewlyUncheckedTagSet((set) => {
               const newSet = new Set(set);
               if (checked) {
                 newSet.delete(tag.id);
@@ -75,20 +82,13 @@ export const FlashcardTagSelectionMenu: React.FC<
     setFilterText(text);
   }, []);
 
-  const onApplyChanges = useCallback(() => {
-    changeTagListOnFlashcardList(
-      Array.from(checkedTagSet),
-      Array.from(uncheckedTagSet),
-      flashcardList.map((card) => card.id)
+  const applyChanges = useCallback(() => {
+    onApplyChanges(
+      Array.from(newlyCheckedTagSet),
+      Array.from(newlyUncheckedTagSet)
     );
     onClose();
-  }, [
-    changeTagListOnFlashcardList,
-    checkedTagSet,
-    uncheckedTagSet,
-    flashcardList,
-    onClose,
-  ]);
+  }, [newlyCheckedTagSet, newlyUncheckedTagSet, onApplyChanges, onClose]);
 
   return (
     <BasePopupView title="Change tag selection" onClose={onClose}>
@@ -105,19 +105,19 @@ export const FlashcardTagSelectionMenu: React.FC<
                 label={<TagChip {...tag} />}
                 onChange={tag.onChangeChecked}
                 checked={
-                  !uncheckedTagSet.has(tag.id) &&
-                  (tag.checked || checkedTagSet.has(tag.id))
+                  !newlyUncheckedTagSet.has(tag.id) &&
+                  (tag.checked || newlyCheckedTagSet.has(tag.id))
                 }
                 indeterminate={
                   tag.indeterminate &&
-                  !uncheckedTagSet.has(tag.id) &&
-                  !checkedTagSet.has(tag.id)
+                  !newlyUncheckedTagSet.has(tag.id) &&
+                  !newlyCheckedTagSet.has(tag.id)
                 }
               />
             ))
             .reverse()}
       </div>
-      <Button onClick={onApplyChanges}>Apply changes</Button>
+      <Button onClick={applyChanges}>Apply changes</Button>
     </BasePopupView>
   );
 };

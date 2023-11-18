@@ -18,6 +18,7 @@ const InitialState: FlashcardDeckState = {
   activeCardId: -1,
   activeFilter: defaultFlashcardFilterData,
   deckSize: 0,
+  minHitPercentage: 1,
   maxHitPercentage: 0,
   practiceHistory: [],
   isPickingNextCard: false,
@@ -43,6 +44,14 @@ const getCardMapFromFetch = async () => {
   return { map };
 };
 
+const logPickLogObj = (flashcard: FlashcardData, logObject: any) => {
+  logObject.card = flashcard.frontText;
+  logObject.cardPercentage = `${Math.floor(
+    getHitPercentage(flashcard) * 100
+  )}%`;
+  console.log("Pick data - ", logObject);
+};
+
 const pickFlashcard = (
   list: FlashcardData[],
   state: FlashcardDeckState
@@ -50,41 +59,70 @@ const pickFlashcard = (
   if (list.length === 0) {
     return null;
   }
-  const maxHitPercentage = Math.random() * state.maxHitPercentage;
-  console.log(`Max hit %: ${maxHitPercentage * 100}%`);
+  const logObject: any = {};
+  const { minHitPercentage, maxHitPercentage, practiceHistory } = state;
+  logObject.minThreshold = minHitPercentage;
+  logObject.maxThreshold = maxHitPercentage;
+  // Pick a random threshold for hit percentage, under which a card can be picked
+  // The threshold can not be higher than the card in the deck with the highest hit percentage
+  // It also can't be lower than the card in the deck with the lowest hit percentage
+  const pickMaxHitPercentage =
+    Math.random() * (maxHitPercentage - minHitPercentage) + minHitPercentage;
+  logObject.pickThreshold = `${Math.floor(pickMaxHitPercentage * 100)}%`;
+  // If we can't find a card below the desired hit percentage threshold,
+  // we can choose from the cards we've looked through and pick the card with the lowest hit percentage
   let bestPick: { card: FlashcardData; hitPercentage: number } | undefined;
-  const skipCards = state.practiceHistory.slice(
+  // We want a minimum gap between when cards are picked again
+  // This gap is set as the square root of the deck size, rounded down, minus 1
+  // Examples:
+  // Deck size = 1 -> Gap size = 0
+  // Deck size = 2 -> Gap size = 0
+  // Deck size = 4 -> Gap size = 1
+  // Deck size = 10 -> Gap size = 2
+  // Deck size = 100 -> Gap size = 9
+  const skipCards = practiceHistory.slice(
     0,
-    Math.min(
-      state.practiceHistory.length,
-      Math.floor(Math.sqrt(list.length) - 1)
-    )
+    Math.min(practiceHistory.length, Math.floor(Math.sqrt(list.length) - 1))
   );
+  logObject.minPickGap = skipCards.length;
+  // There has to be a max number of attempts at picking a card
+  // We set this maximum at the number of cards in the deck
   for (let attempt = 0; attempt < list.length; attempt++) {
+    logObject.attempts = attempt + 1;
     const index = randomInteger(0, list.length - 1);
     const flashcard = list[index];
     const hitPercentage = getHitPercentage(flashcard);
-    if (
-      skipCards.indexOf(flashcard.id) === -1 &&
-      (!bestPick || bestPick.hitPercentage < hitPercentage)
-    ) {
+    // If the card has the lowest hit percentage so far, assign it as the best pick
+    // This is in case we can't find any cards not in our `skipCards` list
+    if (!bestPick || bestPick.hitPercentage < hitPercentage) {
       bestPick = { card: flashcard, hitPercentage };
     }
+    // If the card meets our initial criteria, pick it
     if (
       skipCards.indexOf(flashcard.id) === -1 &&
-      maxHitPercentage >= hitPercentage
+      pickMaxHitPercentage >= hitPercentage
     ) {
-      console.log(`Picked card on attempt ${attempt}`);
+      const pickGap = practiceHistory.lastIndexOf(flashcard.id);
+      if (pickGap < 0) {
+        logObject.pickGap = "never";
+      } else {
+        logObject.pickGap = pickGap;
+      }
+      logPickLogObj(flashcard, logObject);
       return flashcard;
     }
   }
+  // If, after all attempts, we can't find a card meeting our criteria
+  // then we pick the one with the lowest hit percentage
   if (!bestPick) {
-    console.log("Every random card was the card to skip");
-    return list[randomInteger(0, list.length - 1)];
+    logObject.lastResort = true;
+    const flashcard = list[randomInteger(0, list.length - 1)];
+    logPickLogObj(flashcard, logObject);
+    // If all this fails, somehow, we pick a card at random
+    return flashcard;
   }
-  console.log(
-    `Max attempts reached. Best pick ${bestPick.hitPercentage * 100}% hit`
-  );
+  logObject.bestPick = `${Math.floor(bestPick.hitPercentage * 100)}%`;
+  logPickLogObj(bestPick.card, logObject);
   return bestPick.card;
 };
 
@@ -102,20 +140,30 @@ export const action = {
       return { filter, cardCount: list.length };
     }),
 
-  loadMaxHitPercentage: (deckId: 0) =>
-    types.loadMaxHitPercentage.createAction(
+  loadHitPercentageRange: (deckId: 0) =>
+    types.loadHitPercentageRange.createAction(
       null,
       async (dispatch, getState) => {
         const { map: cardMap } = allSelect.isLocalSession(getState())
           ? fetchCardMap()
           : await getCardMapFromFetch();
         const { flashcardIdList } = fetchDeck();
-        return flashcardIdList.reduce((maxHitPercentage, id) => {
-          const currentHitPercentage = getHitPercentage(cardMap[id]);
-          return currentHitPercentage > maxHitPercentage
-            ? currentHitPercentage
-            : maxHitPercentage;
-        }, 0);
+        const range = flashcardIdList.reduce(
+          ([minHitPercentage, maxHitPercentage], id) => {
+            const currentHitPercentage = getHitPercentage(cardMap[id]);
+            return [
+              currentHitPercentage < minHitPercentage
+                ? currentHitPercentage
+                : minHitPercentage,
+              currentHitPercentage > maxHitPercentage
+                ? currentHitPercentage
+                : maxHitPercentage,
+            ];
+          },
+          [1, 0]
+        );
+
+        return { min: range[0], max: range[1] };
       }
     ),
 
@@ -131,7 +179,7 @@ export const action = {
       dispatch(
         action.createFlashcardDeck(getState().flashcardDeck.activeFilter)
       );
-      dispatch(action.loadMaxHitPercentage(0));
+      dispatch(action.loadHitPercentageRange(0));
 
       const flashcard = pickFlashcard(
         flashcardIdList.map((id) => map[id]),
@@ -160,9 +208,13 @@ export const reducer = createSliceReducer(InitialState, [
       return { ...state, activeFilter: filter, deckSize: cardCount };
     },
   }),
-  types.loadMaxHitPercentage.createReducer({
-    success: (state, maxHitPercentage) => {
-      return { ...state, maxHitPercentage };
+  types.loadHitPercentageRange.createReducer({
+    success: (state, data) => {
+      return {
+        ...state,
+        minHitPercentage: data.min,
+        maxHitPercentage: data.max,
+      };
     },
   }),
 

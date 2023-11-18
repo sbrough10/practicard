@@ -101,9 +101,12 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
         <IconButton icon={<BackIcon />} onClick={onExit}>
           Back
         </IconButton>
-        <IconButton icon={<EllipsesIcon />} onClick={openMoreOptionsMenu}>
-          More
+        <IconButton icon={<PenIcon />} onClick={openSingleCardEditor}>
+          Edit
         </IconButton>
+        {/* <IconButton icon={<EllipsesIcon />} onClick={openMoreOptionsMenu}>
+          More
+        </IconButton> */}
         <IconButton icon={<FlipIcon />} onClick={flipCard}>
           Flip
         </IconButton>
@@ -150,7 +153,24 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
             </div>
             <div>Card Count: {cardCount}</div>
           </div>
-          <div className={classes.hitMissButtonSection}>
+          <div className={classes.buttonBar}>
+            <IconButton
+              icon={<ExIcon fillColor={MISS_ICON_COLOR} />}
+              onClick={markCardAsMiss}
+            >
+              Incorrect
+            </IconButton>
+            <IconButton icon={<NextIcon />} onClick={goToNextCard}>
+              Skip
+            </IconButton>
+            <IconButton
+              icon={<CheckIcon fillColor={HIT_ICON_COLOR} />}
+              onClick={markCardAsHit}
+            >
+              Correct
+            </IconButton>
+          </div>
+          {/* <div className={classes.hitMissButtonSection}>
             <IconButton
               className={clsx(classes.hitMissButton, "miss-button")}
               icon={<ExIcon fillColor={MISS_ICON_COLOR} />}
@@ -161,7 +181,7 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
               icon={<CheckIcon fillColor={HIT_ICON_COLOR} />}
               onClick={markCardAsHit}
             ></IconButton>
-          </div>
+          </div> */}
           {showSingleCardEditor && (
             <SingleFlashcardEditor
               data={currentFlashcard}

@@ -8,12 +8,18 @@ export interface FlashcardDeckState {
   deckSize: number;
   practiceHistory: FlashcardData["id"][];
   maxHitPercentage: number;
+  minHitPercentage: number;
   isPickingNextCard: boolean;
 }
 
 export interface CreateFlashcardDeckActionData {
   filter: FlashcardFilterData;
   cardCount: number;
+}
+
+export interface LoadHitPercentageRangeActionData {
+  min: number;
+  max: number;
 }
 
 export const types = {
@@ -23,9 +29,12 @@ export const types = {
     CreateFlashcardDeckActionData,
     unknown
   >("flashcardDeck.create"),
-  loadMaxHitPercentage: new AsyncActionType<FullState, null, number, unknown>(
-    "flashcardDeck.maxHitPercentage.load"
-  ),
+  loadHitPercentageRange: new AsyncActionType<
+    FullState,
+    null,
+    LoadHitPercentageRangeActionData,
+    unknown
+  >("flashcardDeck.maxHitPercentage.load"),
   pickFlashcard: new AsyncActionType<
     FullState,
     null,

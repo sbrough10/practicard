@@ -45,7 +45,7 @@ export const ExportedCards: React.FC<ExportedCardsProps> = ({
           alert("copy failure");
         });
     }
-  }, [text]);
+  }, []);
 
   return (
     <BasePopupView title="Exported card data" onClose={onClose}>
