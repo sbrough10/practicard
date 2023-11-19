@@ -52,6 +52,11 @@ const logPickLogObj = (flashcard: FlashcardData, logObject: any) => {
   console.log("Pick data - ", logObject);
 };
 
+interface BestPick {
+  card: FlashcardData;
+  hitPercentage: number;
+}
+
 const pickFlashcard = (
   list: FlashcardData[],
   state: FlashcardDeckState
@@ -71,7 +76,8 @@ const pickFlashcard = (
   logObject.pickThreshold = `${Math.floor(pickMaxHitPercentage * 100)}%`;
   // If we can't find a card below the desired hit percentage threshold,
   // we can choose from the cards we've looked through and pick the card with the lowest hit percentage
-  let bestPick: { card: FlashcardData; hitPercentage: number } | undefined;
+  let bestPick: BestPick | undefined;
+  let bestPickWithGap: BestPick | undefined;
   // We want a minimum gap between when cards are picked again
   // This gap is set as the square root of the deck size, rounded down, minus 1
   // Examples:
@@ -92,8 +98,16 @@ const pickFlashcard = (
     const index = randomInteger(0, list.length - 1);
     const flashcard = list[index];
     const hitPercentage = getHitPercentage(flashcard);
-    // If the card has the lowest hit percentage so far, assign it as the best pick
-    // This is in case we can't find any cards not in our `skipCards` list
+    // Sometimes the hit percentage threshold for the pick is too low
+    // In this case, we identify the card with the lowest hit percentage
+    // and that has not been picked too recently
+    if (
+      skipCards.indexOf(flashcard.id) === -1 &&
+      (!bestPickWithGap || bestPickWithGap.hitPercentage > hitPercentage)
+    ) {
+      bestPickWithGap = { card: flashcard, hitPercentage };
+    }
+    // This is in case we don't find any cards that are not too recent
     if (!bestPick || bestPick.hitPercentage > hitPercentage) {
       bestPick = { card: flashcard, hitPercentage };
     }
@@ -113,17 +127,29 @@ const pickFlashcard = (
     }
   }
   // If, after all attempts, we can't find a card meeting our criteria
-  // then we pick the one with the lowest hit percentage
-  if (!bestPick) {
-    logObject.lastResort = true;
-    const flashcard = list[randomInteger(0, list.length - 1)];
-    logPickLogObj(flashcard, logObject);
-    // If all this fails, somehow, we pick a card at random
-    return flashcard;
+  // then pick the one with the lowest hit percentage that isn't too recent
+  if (bestPickWithGap) {
+    const pickGap = practiceHistory.lastIndexOf(bestPickWithGap.card.id);
+    if (pickGap < 0) {
+      logObject.pickGap = "never";
+    } else {
+      logObject.pickGap = pickGap;
+    }
+    logObject.bestPick = `${Math.floor(bestPickWithGap.hitPercentage * 100)}%`;
+    logPickLogObj(bestPickWithGap.card, logObject);
+    return bestPickWithGap.card;
   }
-  logObject.bestPick = `${Math.floor(bestPick.hitPercentage * 100)}%`;
-  logPickLogObj(bestPick.card, logObject);
-  return bestPick.card;
+  // If all cards were too recent, then just pick the one with the lowest hit percentage
+  if (bestPick) {
+    logObject.bestPick = `${Math.floor(bestPick.hitPercentage * 100)}%`;
+    logPickLogObj(bestPick.card, logObject);
+    return bestPick.card;
+  }
+  // If all this fails, somehow, we pick a card at random
+  logObject.lastResort = true;
+  const flashcard = list[randomInteger(0, list.length - 1)];
+  logPickLogObj(flashcard, logObject);
+  return flashcard;
 };
 
 export const action = {
