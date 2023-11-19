@@ -94,7 +94,7 @@ const pickFlashcard = (
     const hitPercentage = getHitPercentage(flashcard);
     // If the card has the lowest hit percentage so far, assign it as the best pick
     // This is in case we can't find any cards not in our `skipCards` list
-    if (!bestPick || bestPick.hitPercentage < hitPercentage) {
+    if (!bestPick || bestPick.hitPercentage > hitPercentage) {
       bestPick = { card: flashcard, hitPercentage };
     }
     // If the card meets our initial criteria, pick it
