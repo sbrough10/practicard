@@ -1,4 +1,9 @@
-import { GetRequest, PostRequest, createSliceReducer } from "redux-util";
+import {
+  GetRequest,
+  PostRequest,
+  PutRequest,
+  createSliceReducer,
+} from "redux-util";
 import { ApiPath, FlashcardTagData } from "practicard-shared";
 import { FullState } from "./index.types";
 import {
@@ -69,13 +74,23 @@ export const action = {
     }),
 
   updateFlashcardTag: ({ id, label }: FlashcardTagData) =>
-    types.updateFlashcardTag.createAction(() => {
-      const { map, lastId } = fetchTagMap();
-      const tag = map[id];
-      map[id] = { id, label };
-      storeStorageItem(STORAGE_KEY, { map, lastId });
+    types.updateFlashcardTag.createAction(null, async (dispatch, getState) => {
+      const tag = { id, label };
+      if (allSelect.isLocalSession(getState())) {
+        const { map, lastId } = fetchTagMap();
+        map[id] = tag;
+        storeStorageItem(STORAGE_KEY, { map, lastId });
+      } else {
+        const req = new PutRequest(ApiPath.FlashcardTagById, {
+          params: { tagId: id },
+          body: { label },
+        });
+        await req.exec();
+      }
       return tag;
     }),
+
+  deleteFlashcardTag: {},
 };
 
 export const select = {
@@ -113,10 +128,12 @@ export const reducer = createSliceReducer(InitialState, [
     },
   }),
 
-  types.updateFlashcardTag.createReducer((state, data) => {
-    state.map = { ...state.map, [data.id]: data };
+  types.updateFlashcardTag.createReducer({
+    success: (state, data) => {
+      state.map = { ...state.map, [data.id]: data };
 
-    return state;
+      return state;
+    },
   }),
 
   flashcardTypes.createFlashcardListFromNewTagMap.createReducer({

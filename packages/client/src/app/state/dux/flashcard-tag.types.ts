@@ -27,7 +27,10 @@ export const types = {
     FlashcardTagData,
     unknown
   >("flashcardTag.create"),
-  updateFlashcardTag: new ActionType<FullState, FlashcardTagData>(
-    "flashcardTag.update"
-  ),
+  updateFlashcardTag: new AsyncActionType<
+    FullState,
+    null,
+    FlashcardTagData,
+    void
+  >("flashcardTag.update"),
 };

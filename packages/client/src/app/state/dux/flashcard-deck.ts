@@ -57,6 +57,19 @@ interface BestPick {
   hitPercentage: number;
 }
 
+// interface PickParameters {
+//   randomPercentage: number;
+//   skipCards: FlashcardData["id"][];
+//   logObject: any;
+// }
+
+// const pickFlashcard = (
+//   list: FlashcardData[],
+//   state: FlashcardDeckState
+// ): FlashcardData | null => {};
+
+// const pickFlashcardWeighted = (params: PickParameters): FlashcardData => {};
+
 const pickFlashcard = (
   list: FlashcardData[],
   state: FlashcardDeckState
@@ -71,9 +84,11 @@ const pickFlashcard = (
   // Pick a random threshold for hit percentage, under which a card can be picked
   // The threshold can not be higher than the card in the deck with the highest hit percentage
   // It also can't be lower than the card in the deck with the lowest hit percentage
-  const pickMaxHitPercentage =
-    Math.random() * (maxHitPercentage - minHitPercentage) + minHitPercentage;
-  logObject.pickThreshold = `${Math.floor(pickMaxHitPercentage * 100)}%`;
+  const pickPercentage =
+    (Math.random() * (maxHitPercentage - minHitPercentage) +
+      minHitPercentage) **
+    2;
+  logObject.pickPercentage = `${Math.floor(pickPercentage * 100)}%`;
   // If we can't find a card below the desired hit percentage threshold,
   // we can choose from the cards we've looked through and pick the card with the lowest hit percentage
   let bestPick: BestPick | undefined;
@@ -91,6 +106,7 @@ const pickFlashcard = (
     Math.min(practiceHistory.length, Math.floor(Math.sqrt(list.length) - 1))
   );
   logObject.minPickGap = skipCards.length;
+
   // There has to be a max number of attempts at picking a card
   // We set this maximum at the number of cards in the deck
   for (let attempt = 0; attempt < list.length; attempt++) {
@@ -98,32 +114,43 @@ const pickFlashcard = (
     const index = randomInteger(0, list.length - 1);
     const flashcard = list[index];
     const hitPercentage = getHitPercentage(flashcard);
-    // Sometimes the hit percentage threshold for the pick is too low
-    // In this case, we identify the card with the lowest hit percentage
-    // and that has not been picked too recently
-    if (
-      skipCards.indexOf(flashcard.id) === -1 &&
-      (!bestPickWithGap || bestPickWithGap.hitPercentage > hitPercentage)
-    ) {
-      bestPickWithGap = { card: flashcard, hitPercentage };
-    }
-    // This is in case we don't find any cards that are not too recent
-    if (!bestPick || bestPick.hitPercentage > hitPercentage) {
-      bestPick = { card: flashcard, hitPercentage };
-    }
+
+    // ONLY APPLIES TO NEW ALGO
+    // Get the absolute difference from the pick percentage
+    const pickDiff = Math.abs(pickPercentage - hitPercentage);
+
     // If the card meets our initial criteria, pick it
-    if (
-      skipCards.indexOf(flashcard.id) === -1 &&
-      pickMaxHitPercentage >= hitPercentage
-    ) {
-      const pickGap = practiceHistory.lastIndexOf(flashcard.id);
-      if (pickGap < 0) {
-        logObject.pickGap = "never";
-      } else {
-        logObject.pickGap = pickGap;
+    if (skipCards.indexOf(flashcard.id) === -1) {
+      if (pickDiff <= 0.05) {
+        // pickPercentage >= hitPercentage) {
+        const pickGap = practiceHistory.lastIndexOf(flashcard.id);
+        if (pickGap < 0) {
+          logObject.pickGap = "never";
+        } else {
+          logObject.pickGap = pickGap;
+        }
+        logPickLogObj(flashcard, logObject);
+        return flashcard;
+
+        // Sometimes, the hit percentage threshold for the pick is too low.
+        // In this case, after exhausting the max # of attempts,
+        // identify the card with the lowest hit percentage and that has not been picked too recently
+      } else if (
+        !bestPickWithGap ||
+        Math.abs(pickPercentage - bestPickWithGap.hitPercentage) > pickDiff
+      ) {
+        // bestPickWithGap.hitPercentage > hitPercentage) {
+
+        bestPickWithGap = { card: flashcard, hitPercentage };
       }
-      logPickLogObj(flashcard, logObject);
-      return flashcard;
+    }
+    // This is in case all cards that are looked at are too recent
+    if (
+      !bestPick ||
+      Math.abs(pickPercentage - bestPick.hitPercentage) > pickDiff
+    ) {
+      // bestPick.hitPercentage > hitPercentage) {
+      bestPick = { card: flashcard, hitPercentage };
     }
   }
   // If, after all attempts, we can't find a card meeting our criteria
