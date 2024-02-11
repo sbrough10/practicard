@@ -14,8 +14,8 @@
     "lernaBuild": "npx lerna run build --scope=\"practicard-server\" --include-dependencies",
     "start": "(cd packages/server && npm start)"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Stephen Robert Broughton",
+  "license": "Proprietary. Copyright Stephen Robert Broughton 2024 All rights reserved",
   "dependencies": {
     "lerna": "^5.1.8",
     "lerna-cli": "^5.1.1"

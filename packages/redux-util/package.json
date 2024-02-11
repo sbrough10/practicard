@@ -9,8 +9,8 @@
   "scripts": {
     "build": "npx tsc"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Stephen Robert Broughton",
+  "license": "Proprietary. Copyright Stephen Robert Broughton 2024 All rights reserved",
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.5",
     "@types/lodash": "^4.14.195",

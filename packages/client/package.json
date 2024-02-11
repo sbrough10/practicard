@@ -2,6 +2,8 @@
   "name": "practicard-client",
   "version": "0.1.0",
   "private": true,
+  "author": "Stephen Robert Broughton",
+  "license": "Proprietary. Copyright Stephen Robert Broughton 2024 All rights reserved",
   "engines": {
     "node": "18.17.0"
   },
