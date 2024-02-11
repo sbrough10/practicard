@@ -22,5 +22,12 @@ npm start
 
 ## Screenshots
 
-![An example of the deck builder view](/screenshots/deck-builder-view.jpg "An example of the deck builder view")
-![An example of the practice view](https://github.com/sbrough10/practicard/tree/main/screenshots/practice-view.jpg "An example of the practice view")
+<img src="/screenshots/deck-builder-view.jpg" alt="An example of the deck builder view" width="360"/>
+<p>
+  An example of the deck builder view
+</p>
+<br />
+<img src="/screenshots/practice-view.jpg" alt="An example of the practice view" width="360"/>
+<p>
+  An example of the practice view
+</p>
