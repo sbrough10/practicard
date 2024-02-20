@@ -1,5 +1,6 @@
 import { Condition } from "./conditions";
 import { Order } from "./order";
+import { TableField } from "./utils";
 
 export class Limit {
   constructor(private amount: number) {}
@@ -43,7 +44,19 @@ export class Join {
   }
 }
 
-export type Clause = Order | Condition | Limit | Offset | Join;
+export class GroupBy {
+  constructor(private fields: TableField[]) {}
+
+  toString(): string {
+    return ` GROUP BY ${this.fields.map((field) => field.toString())}`;
+  }
+}
+
+export const groupBy = (...fields: TableField[]) => {
+  return new GroupBy(fields);
+};
+
+export type Clause = Order | Condition | Limit | Offset | Join | GroupBy;
 
 export const buildClauseString = (clauses: Clause[]): string => {
   const joins: string[] = [];

@@ -4,7 +4,7 @@
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": false,
+    "strict": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "lib": ["dom", "dom.iterable", "esnext"],

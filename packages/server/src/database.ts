@@ -35,7 +35,7 @@ import {
   WorkspaceData,
 } from "practicard-shared";
 import { generateSessionId } from "./utilities";
-import { pick } from "lodash";
+import { isNumber, pick } from "lodash";
 
 const pgDb = new PostgressDatabase(
   process.env.DATABASE_URL ||
@@ -114,6 +114,7 @@ const flashcardSuccessTable = pgDb.createTable(
         ),
       },
     },
+    unique: ["flashcardId", "userId"],
   }
 );
 
@@ -138,7 +139,10 @@ pgDb.init();
 
 type DbFlashcardSuccessData = Pick<FlashcardData, "hits" | "misses">;
 
-type DbFlashcardData = Omit<FlashcardData, keyof DbFlashcardSuccessData> & {
+type DbFlashcardData = Omit<
+  FlashcardData,
+  keyof DbFlashcardSuccessData | "tagIdList"
+> & {
   tagIdList: string;
 };
 
@@ -163,8 +167,18 @@ const sansNumInList = (list: Expression, item: number) => {
   return replace(list, `|${item}|`, "|");
 };
 
-const convertDbFlashcardData = (dbData: DbJoinFlashcardData): FlashcardData => {
-  return { ...dbData, tagIdList: stringToNumList(dbData.tagIdList) };
+const convertDbFlashcardData = ({
+  tagIdList,
+  hits,
+  misses,
+  ...dbData
+}: DbJoinFlashcardData): FlashcardData => {
+  return {
+    ...dbData,
+    tagIdList: stringToNumList(tagIdList),
+    hits: hits ?? 0,
+    misses: misses ?? 1,
+  };
 };
 
 export const Database = {
@@ -240,7 +254,7 @@ export const Database = {
           ...flashcardTable.fl("frontText", "backText", "id", "tagIdList"),
           ...flashcardSuccessTable.fl("hits", "misses"),
         ],
-        flashcardSuccessTable.innerJoin(
+        flashcardSuccessTable.leftJoin(
           and(
             eq(flashcardSuccessTable.f`userId`, userId),
             eq(flashcardTable.f`id`, flashcardSuccessTable.f`flashcardId`)
@@ -285,7 +299,10 @@ export const Database = {
             ),
           ]
         : []),
-      lt(flashcardSuccessTable.f`hitPercentage`, maxHitPercentage)
+      or(
+        isNull(flashcardSuccessTable.f`misses`),
+        lt(flashcardSuccessTable.f`hitPercentage`, maxHitPercentage)
+      )
     );
 
     const result = await this.selectFlashcard(
@@ -323,14 +340,16 @@ export const Database = {
       )
     ).rows[0].id;
 
-    await flashcardSuccessTable.insert([
-      {
-        userId,
-        flashcardId,
-        hits,
-        misses,
-      },
-    ]);
+    if (hits !== 0 || misses !== 1) {
+      await flashcardSuccessTable.insert([
+        {
+          userId,
+          flashcardId,
+          hits,
+          misses,
+        },
+      ]);
+    }
   },
 
   async createFlashcardList(
@@ -359,14 +378,18 @@ export const Database = {
       )
     ).rows;
 
-    await flashcardSuccessTable.insert(
-      data.map(({ hits, misses }, index) => ({
+    const hitMissData = data
+      .filter(({ hits, misses }) => hits !== 0 || misses !== 1)
+      .map(({ hits, misses }, index) => ({
         userId,
         flashcardId: dbFlashcardList[index].id,
         hits,
         misses,
-      }))
-    );
+      }));
+
+    if (hitMissData.length > 0) {
+      await flashcardSuccessTable.insert(hitMissData);
+    }
 
     return dbFlashcardList.map((flashcard, index) =>
       convertDbFlashcardData({
@@ -390,16 +413,17 @@ export const Database = {
       ...flashcardData
     } = data;
 
-    const successData = pick(data, ["hits", "misses"]);
-
-    if (Object.keys(successData).length > 0) {
-      await flashcardSuccessTable.update(
-        successData,
-        andEq({ flashcardId: id, userId })
-      );
+    if (isNumber(hits) && isNumber(misses)) {
+      if (hits === 0 && misses === 1) {
+        await flashcardSuccessTable.delete(andEq({ flashcardId: id, userId }));
+      } else {
+        await flashcardSuccessTable.insert([
+          { hits, misses, flashcardId: id, userId },
+        ]);
+      }
     }
 
-    // TODO - We will probably never update `tagIdList` this way
+    // TODO - We should probably never update `tagIdList` this way
     const updateValues = {
       ...(tagIdList ? { tagIdList: numListToString(tagIdList) } : {}),
       ...flashcardData,
@@ -419,37 +443,6 @@ export const Database = {
     await flashcardSuccessTable.delete(
       or(...idList.map((id) => eq(f`flashcardId`, id)))
     );
-  },
-
-  async createMissingUserFlashcardSuccessRecords(
-    userId: UserData["id"],
-    workspaceId: WorkspaceData["id"]
-  ) {
-    const idList = (
-      await flashcardTable.select(
-        [flashcardTable.f`id`],
-        flashcardSuccessTable.leftJoin(
-          and(
-            eq(flashcardTable.f`id`, flashcardSuccessTable.f`flashcardId`),
-            eq(flashcardSuccessTable.f`userId`, userId),
-            eq(flashcardTable.f`workspaceId`, workspaceId)
-          )
-        ),
-        isNull(flashcardSuccessTable.f`userId`)
-      )
-    ).rows.map((row) => row.id as FlashcardData["id"]);
-
-    const defaultValues = {
-      hits: 0,
-      misses: 1,
-      userId,
-    };
-
-    if (idList.length > 0) {
-      await flashcardSuccessTable.insert(
-        idList.map((id) => ({ ...defaultValues, flashcardId: id }))
-      );
-    }
   },
 
   async changeTagListForFlashcardList(
@@ -523,5 +516,26 @@ export const Database = {
       },
       eq(f`workspaceId`, workspaceId)
     );
+  },
+
+  async makeFlashcardSuccessUniquelyConstrained() {
+    // Delete duplicate records
+    pgDb.query(
+      `DELETE FROM "FlashcardSuccess" t1 WHERE EXISTS (
+          SELECT "flashcardId", "userId"
+          FROM "FlashcardSuccess" t2
+          WHERE t1."flashcardId" = t2."flashcardId"
+            AND t1."userId" = t2."userId"
+          AND t1.ctid <> t2.ctid
+      );`
+    );
+
+    pgDb.query(
+      'ALTER TABLE "FlashcardSuccess" ADD CONSTRAINT "FlashcardSuccess_unique" UNIQUE ("flashcardId", "userId");'
+    );
+  },
+
+  async deleteDefaultFlashcardSuccessRecords() {
+    await flashcardSuccessTable.delete(andEq({ hits: 0, misses: 1 }));
   },
 };

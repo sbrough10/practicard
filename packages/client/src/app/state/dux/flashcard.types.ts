@@ -1,8 +1,8 @@
 import {
-  CreateFlashcardListAndTagList,
   FlashcardData,
   FlashcardFilterData,
   FlashcardTagData,
+  FlashcardUpdateData,
 } from "practicard-shared";
 import { ActionType, AsyncActionType } from "redux-util";
 import { FullState } from "./index.types";
@@ -25,7 +25,7 @@ export interface LoadFlashcardListActionData {
 
 export interface UpdateFlashcardActionData {
   id: FlashcardData["id"];
-  data: Partial<FlashcardData>;
+  data: FlashcardUpdateData;
 }
 
 export interface ChangeTagForFlashcardListActionData {

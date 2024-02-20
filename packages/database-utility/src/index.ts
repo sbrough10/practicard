@@ -2,6 +2,7 @@ import * as pg from "pg";
 import _ from "lodash";
 import {
   CalculatedConfig,
+  f,
   GeneratedTableFields,
   handleSqlValue,
   SequenceConfig,
@@ -13,23 +14,33 @@ import {
 } from "./utils";
 import { Condition } from "./conditions";
 import { buildClauseString, Clause, Join, JoinType } from "./clauses";
-import { Expression, getExpToString } from "./oprations";
-import { AggregateFunction } from "./aggregate-functions";
+import { Expression, getExpToString } from "./operations";
+import { Alias, SelectExpression } from "./select";
 
-export { min, max } from "./aggregate-functions";
+export { alias, min, max } from "./select";
 export * from "./data-types";
 export { caseWhen } from "./case";
 export type { Limit, Offset } from "./clauses";
-export { limit, offset } from "./clauses";
+export { groupBy, limit, offset } from "./clauses";
 export * from "./conditions";
-export { concat, op, replace } from "./oprations";
-export type { Expression } from "./oprations";
+export { concat, op, replace } from "./operations";
+export type { Expression } from "./operations";
 export type { Order, SortExpression } from "./order";
 export { asc, desc } from "./order";
 export { f, CalculatedConfig, SequenceConfig } from "./utils";
 
-export interface TableOptions<G extends GeneratedTableFields> {
+export interface TableOptions<
+  F extends TableFields,
+  G extends GeneratedTableFields
+> {
   generatedFields?: G;
+  /**
+   * The combination of keys in this list must be unique for all rows in the table.
+   *
+   * If an insert query every tries to add a row where all of these values match an existing row
+   * then the existing row will be updated instead.
+   */
+  unique?: (keyof F | keyof G)[];
 }
 
 export class PostgressDatabase {
@@ -73,9 +84,9 @@ export class PostgressDatabase {
   public createTable<F extends TableFields, G extends GeneratedTableFields>(
     name: string,
     fields: F,
-    options?: TableOptions<G>
+    options?: TableOptions<F, G>
   ) {
-    const { generatedFields } = options ?? {};
+    const { generatedFields, unique } = options ?? {};
     const tableFields = [
       "(",
       [
@@ -97,6 +108,13 @@ export class PostgressDatabase {
         ..._.toPairs(fields).map(
           ([fieldName, dataType]) => `"${fieldName}" ${dataType.toString()}`
         ),
+        ...(unique
+          ? [
+              `CONSTRAINT "${name}_unique" UNIQUE (${unique
+                .map((key) => f(key as string))
+                .join(", ")})`,
+            ]
+          : []),
       ].join(",\n"),
       ")",
     ].join("\n");
@@ -114,12 +132,16 @@ export class PostgressDatabase {
 export type QueryResult<R> = pg.QueryResult<Partial<TableValues<R>>>;
 
 export class Table<F extends TableFields, G extends GeneratedTableFields> {
+  private unique: Required<TableOptions<F, G>>["unique"];
+
   constructor(
     private database: PostgressDatabase,
     private name: string,
     fields: F,
-    options?: TableOptions<G>
-  ) {}
+    options?: TableOptions<F, G>
+  ) {
+    this.unique = options?.unique ?? [];
+  }
 
   f(name: string | TemplateStringsArray) {
     return new TableField(_.isString(name) ? name : name.raw[0], this.name);
@@ -159,6 +181,14 @@ export class Table<F extends TableFields, G extends GeneratedTableFields> {
       valueSets.push(`(${values.join(", ")})`);
     }
 
+    const conflictString =
+      this.unique.length > 0
+        ? ` ON CONFLICT (${this.unique
+            .map((key) => f(key as string))
+            .join(", ")}) DO UPDATE SET ` +
+          keyList.map((field) => `${f(field)}=excluded.${f(field)}`).join(", ")
+        : "";
+
     const returnString = returnFieldList
       ? ` RETURNING ${
           returnFieldList.length > 0
@@ -170,7 +200,7 @@ export class Table<F extends TableFields, G extends GeneratedTableFields> {
     return await this.database.query(
       `INSERT INTO "${this.name}" (${columns.join(
         ", "
-      )}) VALUES ${valueSets.join(", ")}${returnString};`
+      )}) VALUES ${valueSets.join(", ")}${conflictString}${returnString};`
     );
   }
 
@@ -187,7 +217,7 @@ export class Table<F extends TableFields, G extends GeneratedTableFields> {
   }
 
   async select(
-    fields: (keyof F | keyof G | Expression | AggregateFunction)[],
+    fields: (keyof F | keyof G | SelectExpression | Alias)[],
     ...clauses: Clause[]
   ) {
     const fieldsString =
@@ -197,7 +227,7 @@ export class Table<F extends TableFields, G extends GeneratedTableFields> {
               if (_.isString(field)) {
                 return `"${field}"`;
               }
-              return field.toString();
+              return field?.toString() ?? "null";
             })
             .join(", ")
         : "*";

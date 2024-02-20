@@ -5,6 +5,7 @@ import {
   FlashcardTagData,
   FlashcardCreationData,
   NewTagToFlashcardMap,
+  FlashcardUpdateData,
 } from "practicard-shared";
 import { FlashcardQuery } from "app/state/dux/flashcard.types";
 import { BatchWithItemList } from "redux-util";
@@ -71,7 +72,7 @@ export const useUpdateFlashcard = () => {
   const dispatch = useDispatch();
 
   return useCallback(
-    (id: FlashcardData["id"], data: Partial<FlashcardData>) => {
+    (id: FlashcardData["id"], data: FlashcardUpdateData) => {
       dispatch(action.updateFlashcard(id, data));
     },
     [dispatch]

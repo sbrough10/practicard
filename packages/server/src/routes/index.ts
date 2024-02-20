@@ -4,5 +4,6 @@ import "./user";
 import "./workspace";
 import "./flashcard";
 import "./flashcard-tag";
+import "./migration";
 
 export * from "./init";

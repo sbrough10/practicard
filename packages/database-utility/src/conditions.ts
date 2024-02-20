@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { Expression, getExpToString } from "./oprations";
+import { Expression, getExpToString } from "./operations";
 import { f, SqlValue, TableField, TableValues } from "./utils";
 
 export class IfThenStatement {
@@ -72,6 +72,12 @@ class IsNullCondition extends UnarySuffixOperatorCondition {
   }
 }
 
+class IsNotNullCondition extends UnarySuffixOperatorCondition {
+  constructor(exp: Expression) {
+    super(exp, "IS NOT NULL");
+  }
+}
+
 class BinaryOperatorCondition extends Condition {
   constructor(
     private expA: Expression,
@@ -106,9 +112,21 @@ class GreaterThanCondition extends BinaryOperatorCondition {
   }
 }
 
+class GreaterThanOrEqualToCondition extends BinaryOperatorCondition {
+  constructor(expA: Expression, expB: Expression) {
+    super(expA, expB, ">=");
+  }
+}
+
 class LessThanCondition extends BinaryOperatorCondition {
   constructor(expA: Expression, expB: Expression) {
     super(expA, expB, "<");
+  }
+}
+
+class LessThanOrEqualToCondition extends BinaryOperatorCondition {
+  constructor(expA: Expression, expB: Expression) {
+    super(expA, expB, "<=");
   }
 }
 
@@ -160,7 +178,11 @@ class OrEqualityCondition extends ChainedConjunctionCondition {
 
 class AndLikeCondition extends ChainedConjunctionCondition {
   constructor(checks: TableValues) {
-    super(checks, like, "AND");
+    super(
+      checks,
+      like as (expA: Expression, value: SqlValue) => Condition,
+      "AND"
+    );
   }
 }
 
@@ -168,12 +190,24 @@ export const isNull = (exp: Expression): Condition => {
   return new IsNullCondition(exp);
 };
 
+export const isNotNull = (exp: Expression): Condition => {
+  return new IsNotNullCondition(exp);
+};
+
 export const lt = (expA: Expression, expB: Expression): Condition => {
   return new LessThanCondition(expA, expB);
 };
 
+export const lteq = (expA: Expression, expB: Expression): Condition => {
+  return new LessThanOrEqualToCondition(expA, expB);
+};
+
 export const gt = (expA: Expression, expB: Expression): Condition => {
   return new GreaterThanCondition(expA, expB);
+};
+
+export const gteq = (expA: Expression, expB: Expression): Condition => {
+  return new GreaterThanOrEqualToCondition(expA, expB);
 };
 
 export const neq = (expA: Expression, expB: Expression): Condition => {

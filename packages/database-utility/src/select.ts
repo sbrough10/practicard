@@ -1,3 +1,4 @@
+import { Expression, getExpToString } from "./operations";
 import { TableField } from "./utils";
 
 export class AggregateFunction {
@@ -25,4 +26,25 @@ export const min = (field: TableField): MinAggregate => {
 
 export const max = (field: TableField): MaxAggregate => {
   return new MaxAggregate(field);
+};
+
+export type SelectExpression = Expression | AggregateFunction;
+
+const getSelectExpToString = (expression: SelectExpression) => {
+  if (expression instanceof AggregateFunction) {
+    return expression.toString();
+  }
+  return getExpToString(expression);
+};
+
+export class Alias {
+  constructor(public expression: SelectExpression, private label: string) {}
+
+  toString(): string {
+    return `(${getSelectExpToString(this.expression)}) AS "${this.label}"`;
+  }
+}
+
+export const alias = (expression: SelectExpression, label: string) => {
+  return new Alias(expression, label);
 };

@@ -1,5 +1,5 @@
 import { IfThenStatement } from "./conditions";
-import { Expression, getExpToString, SpecialExpression } from "./oprations";
+import { Expression, getExpToString, SpecialExpression } from "./operations";
 
 export class CaseStatement extends SpecialExpression {
   constructor(

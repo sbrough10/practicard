@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { FlashcardData } from "practicard-shared";
 import {
   useActiveDeckCardCount,
   useActiveFlashcard,
@@ -14,11 +13,9 @@ import { BackIcon } from "../../icons/BackIcon";
 import { FlipIcon } from "../../icons/FlipIcon";
 import { ExIcon } from "../../icons/ExIcon";
 import { CheckIcon } from "../../icons/CheckIcon";
-import clsx from "clsx";
 import { HIT_ICON_COLOR, MISS_ICON_COLOR } from "../../utilities/styles";
 import { HitIconLabel } from "../../components/HitIconLabel";
 import { ChipAlignment, TagChipList } from "app/components/TagChipList";
-import { EllipsesIcon } from "app/icons/EllipsesIcon";
 import { Menu } from "app/components/Menu";
 import { MenuItem } from "app/components/MenuItems";
 import { PenIcon } from "app/icons/PenIcon";
@@ -95,6 +92,41 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
     goToNextCard();
   }, [currentFlashcard, updateFlashcard, goToNextCard]);
 
+  const onKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      switch (event.key.toUpperCase()) {
+        case "Q":
+          return onExit();
+        case "P":
+          return openSingleCardEditor();
+        case "F":
+          return flipCard();
+        case "N":
+          return markCardAsMiss();
+        case "S":
+          return goToNextCard();
+        case "Y":
+          return markCardAsHit();
+      }
+    },
+    [
+      onExit,
+      openSingleCardEditor,
+      flipCard,
+      markCardAsMiss,
+      goToNextCard,
+      markCardAsHit,
+    ]
+  );
+
+  useEffect(() => {
+    document.body.addEventListener("keypress", onKeyPress);
+
+    return () => {
+      document.body.removeEventListener("keypress", onKeyPress);
+    };
+  }, [onKeyPress]);
+
   return (
     <div className={classes.root}>
       <div className={classes.buttonBar}>
@@ -104,27 +136,10 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
         <IconButton icon={<PenIcon />} onClick={openSingleCardEditor}>
           Edit
         </IconButton>
-        {/* <IconButton icon={<EllipsesIcon />} onClick={openMoreOptionsMenu}>
-          More
-        </IconButton> */}
         <IconButton icon={<FlipIcon />} onClick={flipCard}>
           Flip
         </IconButton>
       </div>
-      <Menu
-        open={!!moreOptionsMenuAnchor}
-        anchorEl={moreOptionsMenuAnchor}
-        onClose={closeMoreOptionsMenu}
-      >
-        <MenuItem onClick={openSingleCardEditor}>
-          <PenIcon size={16} fillColor="black" />
-          Edit card
-        </MenuItem>
-        <MenuItem onClick={goToNextCard}>
-          <NextIcon size={16} fillColor="black" />
-          Skip card
-        </MenuItem>
-      </Menu>
       {currentFlashcard ? (
         <TagChipList
           tagIdList={currentFlashcard.tagIdList}
@@ -170,18 +185,6 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
               Correct
             </IconButton>
           </div>
-          {/* <div className={classes.hitMissButtonSection}>
-            <IconButton
-              className={clsx(classes.hitMissButton, "miss-button")}
-              icon={<ExIcon fillColor={MISS_ICON_COLOR} />}
-              onClick={markCardAsMiss}
-            ></IconButton>
-            <IconButton
-              className={clsx(classes.hitMissButton, "hit-button")}
-              icon={<CheckIcon fillColor={HIT_ICON_COLOR} />}
-              onClick={markCardAsHit}
-            ></IconButton>
-          </div> */}
           {showSingleCardEditor && (
             <SingleFlashcardEditor
               data={currentFlashcard}

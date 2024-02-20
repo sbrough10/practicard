@@ -22,6 +22,7 @@ import {
   getHitPercentage,
   ApiPath,
   defaultFlashcardData,
+  FlashcardUpdateData,
 } from "practicard-shared";
 import { FullState } from "./index.types";
 import _ from "lodash";
@@ -231,7 +232,7 @@ export const action = {
   removeFlashcardFromRecentlyCreated: (idList: FlashcardData["id"][]) =>
     types.removeFlashcardListFromRecentlyCreated.createAction(() => idList),
 
-  updateFlashcard: (id: FlashcardData["id"], data: Partial<FlashcardData>) =>
+  updateFlashcard: (id: FlashcardData["id"], data: FlashcardUpdateData) =>
     types.updateFlashcard.createAction(null, async (dispatch, getState) => {
       if (allSelect.isLocalSession(getState())) {
         const { map, lastId } = fetchCardMap();
@@ -239,9 +240,11 @@ export const action = {
         map[id] = { ...flashcard, ...data };
         storeStorageItem(STORAGE_KEY, { map, lastId });
       } else {
+        const { hits, misses } = select.getFlashcardById(getState(), id) ?? {};
+
         const req = new PutRequest(ApiPath.FlashcardById, {
           params: { flashcardId: id },
-          body: data,
+          body: { hits, misses, ...data },
         });
         await req.exec();
       }

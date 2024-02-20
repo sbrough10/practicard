@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { Expression, getExpToString } from "./oprations";
+import { Expression, getExpToString } from "./operations";
 
 export const sanitize = (value: string) => {
   return value.replace(/'/g, "''").replace(/\\/g, "\\\\");

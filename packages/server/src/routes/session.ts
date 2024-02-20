@@ -33,8 +33,6 @@ app.post(
       ? params.workspace.id
       : (await Database.createWorkspace(params.workspace.displayName)).id;
 
-    Database.createMissingUserFlashcardSuccessRecords(userId, workspaceId);
-
     const token = await Database.createSession(userId, workspaceId);
     res
       .cookie("userId", userId)
