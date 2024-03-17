@@ -519,7 +519,7 @@ export const Database = {
   },
 
   async makeFlashcardSuccessUniquelyConstrained() {
-    // Delete duplicate records
+    // Delete any records that have duplicates
     pgDb.query(
       `DELETE FROM "FlashcardSuccess" t1 WHERE EXISTS (
           SELECT "flashcardId", "userId"

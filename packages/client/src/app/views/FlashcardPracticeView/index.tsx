@@ -94,6 +94,9 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
 
   const onKeyPress = useCallback(
     (event: KeyboardEvent) => {
+      if (showSingleCardEditor) {
+        return;
+      }
       switch (event.key.toUpperCase()) {
         case "Q":
           return onExit();
@@ -116,6 +119,7 @@ export const FlashcardPracticeView: React.FC<FlashcardPracticeViewProps> = ({
       markCardAsMiss,
       goToNextCard,
       markCardAsHit,
+      showSingleCardEditor,
     ]
   );
 
